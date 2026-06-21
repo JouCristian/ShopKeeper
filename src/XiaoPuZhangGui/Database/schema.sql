@@ -94,14 +94,18 @@ CREATE TABLE IF NOT EXISTS purchase_items (
 CREATE TABLE IF NOT EXISTS sales_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     order_no TEXT NOT NULL UNIQUE,
+    sale_time TEXT NULL,
     sold_at TEXT NOT NULL,
+    total_amount NUMERIC NOT NULL DEFAULT 0,
+    total_cost NUMERIC NOT NULL DEFAULT 0,
     receivable_amount NUMERIC NOT NULL DEFAULT 0,
     cost_amount NUMERIC NOT NULL DEFAULT 0,
     gross_profit NUMERIC NOT NULL DEFAULT 0,
     paid_amount NUMERIC NOT NULL DEFAULT 0,
     credit_amount NUMERIC NOT NULL DEFAULT 0,
     remark TEXT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sales_items (
@@ -112,7 +116,12 @@ CREATE TABLE IF NOT EXISTS sales_items (
     quantity NUMERIC NOT NULL,
     sale_price_snapshot NUMERIC NOT NULL,
     cost_price_snapshot NUMERIC NOT NULL,
+    line_amount NUMERIC NOT NULL DEFAULT 0,
+    line_cost NUMERIC NOT NULL DEFAULT 0,
+    line_profit NUMERIC NOT NULL DEFAULT 0,
     profit_snapshot NUMERIC NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
     FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
@@ -184,6 +193,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_batches_product_id ON stock_batches(product
 CREATE INDEX IF NOT EXISTS idx_stock_batches_expiry_date ON stock_batches(expiry_date);
 CREATE INDEX IF NOT EXISTS idx_purchase_items_product_id ON purchase_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_sales_orders_sold_at ON sales_orders(sold_at);
+CREATE INDEX IF NOT EXISTS idx_sales_items_product_id ON sales_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_credit_records_status ON credit_records(status);
 CREATE INDEX IF NOT EXISTS idx_backup_logs_created_at ON backup_logs(created_at);
 

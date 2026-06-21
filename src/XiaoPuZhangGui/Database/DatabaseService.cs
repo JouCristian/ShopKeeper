@@ -93,6 +93,8 @@ WHERE 1 = 1;";
 
                 EnsurePurchaseColumns(connection);
                 EnsurePurchaseIndexes(connection);
+                EnsureSalesColumns(connection);
+                EnsureSalesIndexes(connection);
             }
         }
 
@@ -153,6 +155,54 @@ CREATE INDEX IF NOT EXISTS idx_stock_batches_batch_code ON stock_batches(batch_c
             }
         }
 
+        private static void EnsureSalesColumns(SQLiteConnection connection)
+        {
+            EnsureColumn(connection, "sales_orders", "sale_time", "TEXT NULL");
+            EnsureColumn(connection, "sales_orders", "total_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_orders", "total_cost", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_orders", "gross_profit", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_orders", "paid_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_orders", "remark", "TEXT NULL");
+            EnsureColumn(connection, "sales_orders", "updated_at", "TEXT NULL");
+
+            if (HasColumn(connection, "sales_orders", "sold_at"))
+            {
+                CopyDateColumnWhenEmpty(connection, "sales_orders", "sold_at", "sale_time");
+            }
+
+            if (HasColumn(connection, "sales_orders", "receivable_amount"))
+            {
+                CopyColumnValueWhenZero(connection, "sales_orders", "receivable_amount", "total_amount");
+            }
+
+            if (HasColumn(connection, "sales_orders", "cost_amount"))
+            {
+                CopyColumnValueWhenZero(connection, "sales_orders", "cost_amount", "total_cost");
+            }
+
+            EnsureColumn(connection, "sales_items", "line_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_items", "line_cost", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_items", "line_profit", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "sales_items", "created_at", "TEXT NULL");
+            EnsureColumn(connection, "sales_items", "updated_at", "TEXT NULL");
+
+            if (HasColumn(connection, "sales_items", "profit_snapshot"))
+            {
+                CopyColumnValueWhenZero(connection, "sales_items", "profit_snapshot", "line_profit");
+            }
+        }
+
+        private static void EnsureSalesIndexes(SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+CREATE INDEX IF NOT EXISTS idx_sales_orders_sale_time ON sales_orders(sale_time);
+CREATE INDEX IF NOT EXISTS idx_sales_items_product_id ON sales_items(product_id);";
+                command.ExecuteNonQuery();
+            }
+        }
+
         private static bool EnsureColumn(SQLiteConnection connection, string tableName, string columnName, string columnDefinition)
         {
             if (HasColumn(connection, tableName, columnName))
@@ -200,6 +250,24 @@ CREATE INDEX IF NOT EXISTS idx_stock_batches_batch_code ON stock_batches(batch_c
             using (SQLiteCommand command = connection.CreateCommand())
             {
                 command.CommandText = string.Format("UPDATE {0} SET {1} = {2};", tableName, targetColumn, sourceColumn);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void CopyColumnValueWhenZero(SQLiteConnection connection, string tableName, string sourceColumn, string targetColumn)
+        {
+            if (!HasColumn(connection, tableName, sourceColumn) || !HasColumn(connection, tableName, targetColumn))
+            {
+                return;
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = string.Format(
+                    "UPDATE {0} SET {1} = {2} WHERE {1} IS NULL OR {1} = 0;",
+                    tableName,
+                    targetColumn,
+                    sourceColumn);
                 command.ExecuteNonQuery();
             }
         }

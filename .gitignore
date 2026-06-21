@@ -18,6 +18,9 @@ packages/
 *.nupkg
 
 # Local runtime config
+.runtime/
+data/
+.manual-test-backup/
 app.config.xml
 **/app.config.xml
 

@@ -9,6 +9,8 @@ namespace XiaoPuZhangGui.Services
     {
         public static AppConfig LoadOrCreateDefault()
         {
+            AppPaths.EnsureRuntimeDirectories();
+
             if (!File.Exists(AppPaths.ConfigFilePath))
             {
                 AppConfig defaultConfig = CreateDefault();
@@ -31,19 +33,10 @@ namespace XiaoPuZhangGui.Services
                 RecoveryKeySalt = ReadValue(root, "RecoveryKeySalt", string.Empty)
             };
 
-            if (string.IsNullOrWhiteSpace(config.StoreName))
+            bool changed = NormalizeRuntimePaths(config);
+            if (changed)
             {
-                config.StoreName = "小铺掌柜";
-            }
-
-            if (string.IsNullOrWhiteSpace(config.DatabasePath))
-            {
-                config.DatabasePath = AppPaths.DefaultDatabasePath;
-            }
-
-            if (string.IsNullOrWhiteSpace(config.BackupPath))
-            {
-                config.BackupPath = AppPaths.BackupDirectory;
+                Save(config);
             }
 
             return config;
@@ -51,6 +44,7 @@ namespace XiaoPuZhangGui.Services
 
         public static void Save(AppConfig config)
         {
+            AppPaths.EnsureDirectory(AppPaths.RuntimeRoot);
             XDocument document = new XDocument(
                 new XElement("AppConfig",
                     new XElement("StoreName", config.StoreName ?? string.Empty),
@@ -85,6 +79,31 @@ namespace XiaoPuZhangGui.Services
                 RecoveryKeyHash = string.Empty,
                 RecoveryKeySalt = string.Empty
             };
+        }
+
+        private static bool NormalizeRuntimePaths(AppConfig config)
+        {
+            bool changed = false;
+
+            if (string.IsNullOrWhiteSpace(config.StoreName))
+            {
+                config.StoreName = "小铺掌柜";
+                changed = true;
+            }
+
+            if (config.DatabasePath != AppPaths.DefaultDatabasePath)
+            {
+                config.DatabasePath = AppPaths.DefaultDatabasePath;
+                changed = true;
+            }
+
+            if (config.BackupPath != AppPaths.BackupDirectory)
+            {
+                config.BackupPath = AppPaths.BackupDirectory;
+                changed = true;
+            }
+
+            return changed;
         }
 
         private static string ReadValue(XElement root, string elementName, string defaultValue)

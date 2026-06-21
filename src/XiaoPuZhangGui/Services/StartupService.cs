@@ -8,10 +8,12 @@ namespace XiaoPuZhangGui.Services
     {
         public static void Initialize()
         {
+            AppPaths.EnsureRuntimeDirectories();
             AppConfig config = AppConfigService.LoadOrCreateDefault();
 
             AppPaths.EnsureDirectory(AppPaths.DatabaseDirectory);
             AppPaths.EnsureDirectory(config.BackupPath);
+            AppPaths.EnsureDirectory(AppPaths.ExportDirectory);
 
             DatabaseService.Initialize(config.DatabasePath);
         }

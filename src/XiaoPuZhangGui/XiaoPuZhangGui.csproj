@@ -62,6 +62,7 @@
     <Compile Include="Forms\PurchaseManagementPage.cs" />
     <Compile Include="Forms\RecoveryKeyDisplayForm.cs" />
     <Compile Include="Forms\ResetPinForm.cs" />
+    <Compile Include="Forms\ReportPage.cs" />
     <Compile Include="Forms\SalesDetailForm.cs" />
     <Compile Include="Forms\SalesManagementPage.cs" />
     <Compile Include="Forms\SettingsPage.cs" />
@@ -74,9 +75,15 @@
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\PurchaseItem.cs" />
     <Compile Include="Models\PurchaseRecord.cs" />
+    <Compile Include="Models\ProductProfitRankItem.cs" />
+    <Compile Include="Models\ProductSalesRankItem.cs" />
+    <Compile Include="Models\LowStockReportItem.cs" />
+    <Compile Include="Models\ExpiringProductReportItem.cs" />
+    <Compile Include="Models\ReportSummary.cs" />
     <Compile Include="Models\SalesItem.cs" />
     <Compile Include="Models\SalesOrder.cs" />
     <Compile Include="Models\ScrapRecord.cs" />
+    <Compile Include="Models\ScrapSummaryItem.cs" />
     <Compile Include="Models\StockBatch.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -85,6 +92,7 @@
     <Compile Include="Repositories\InventoryCheckRepository.cs" />
     <Compile Include="Repositories\ProductRepository.cs" />
     <Compile Include="Repositories\PurchaseRepository.cs" />
+    <Compile Include="Repositories\ReportRepository.cs" />
     <Compile Include="Repositories\SalesRepository.cs" />
     <Compile Include="Repositories\ScrapRepository.cs" />
     <Compile Include="Repositories\StockBatchRepository.cs" />
@@ -95,6 +103,7 @@
     <Compile Include="Services\InventoryCheckService.cs" />
     <Compile Include="Services\ProductService.cs" />
     <Compile Include="Services\PurchaseService.cs" />
+    <Compile Include="Services\ReportService.cs" />
     <Compile Include="Services\SalesService.cs" />
     <Compile Include="Services\ScrapService.cs" />
     <Compile Include="Services\StockBatchService.cs" />

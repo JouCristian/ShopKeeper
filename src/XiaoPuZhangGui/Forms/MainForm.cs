@@ -11,6 +11,7 @@ namespace XiaoPuZhangGui.Forms
         private const string PurchaseManagementTitle = "进货入库";
         private const string InventoryCheckTitle = "库存盘点";
         private const string CreditManagementTitle = "赊账管理";
+        private const string ReportTitle = "经营报表";
         private const string SettingsTitle = "系统设置";
 
         private readonly Panel _navigationPanel;
@@ -71,7 +72,7 @@ namespace XiaoPuZhangGui.Forms
             AddNavigationButton(PurchaseManagementTitle, "采购入库、批次、进价和到期日期登记入口。");
             AddNavigationButton(InventoryCheckTitle, "库存修正、盈亏原因和报废处理入口。");
             AddNavigationButton(CreditManagementTitle, "欠款查询、还款登记和备注管理入口。");
-            AddNavigationButton("报表导出", "日报、月报、排行和 Excel/WPS 导出入口。");
+            AddNavigationButton(ReportTitle, "日报、月报、商品排行、库存提醒和报废摘要。");
             AddNavigationButton(SettingsTitle, "店铺信息、数据库路径、备份路径和恢复相关设置入口。");
         }
 
@@ -152,6 +153,12 @@ namespace XiaoPuZhangGui.Forms
             if (title == CreditManagementTitle)
             {
                 _contentPanel.Controls.Add(new CreditManagementPage());
+                return;
+            }
+
+            if (title == ReportTitle)
+            {
+                _contentPanel.Controls.Add(new ReportPage());
                 return;
             }
 

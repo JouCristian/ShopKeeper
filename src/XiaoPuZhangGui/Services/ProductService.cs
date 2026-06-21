@@ -23,6 +23,11 @@ namespace XiaoPuZhangGui.Services
                 string.IsNullOrWhiteSpace(status) ? "全部" : status);
         }
 
+        public IList<Product> GetActiveProducts()
+        {
+            return _productRepository.Search(string.Empty, null, "在售");
+        }
+
         public Product GetById(long id)
         {
             return _productRepository.GetById(id);

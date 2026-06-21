@@ -46,30 +46,47 @@ CREATE TABLE IF NOT EXISTS stock_batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     product_id INTEGER NOT NULL,
     purchase_item_id INTEGER NULL,
+    batch_code TEXT NULL,
+    source_type TEXT NULL,
+    source_id INTEGER NULL,
+    quantity_in NUMERIC NOT NULL DEFAULT 0,
+    quantity_remaining NUMERIC NOT NULL DEFAULT 0,
+    purchase_price NUMERIC NOT NULL DEFAULT 0,
+    production_date TEXT NULL,
     quantity NUMERIC NOT NULL DEFAULT 0,
     remaining_quantity NUMERIC NOT NULL DEFAULT 0,
     unit_cost NUMERIC NOT NULL DEFAULT 0,
     expiry_date TEXT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
 CREATE TABLE IF NOT EXISTS purchase_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    purchase_no TEXT NOT NULL UNIQUE,
+    purchase_date TEXT NOT NULL,
     purchased_at TEXT NOT NULL,
     total_amount NUMERIC NOT NULL DEFAULT 0,
     remark TEXT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL
 );
 
 CREATE TABLE IF NOT EXISTS purchase_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     purchase_record_id INTEGER NOT NULL,
     product_id INTEGER NOT NULL,
+    product_name_snapshot TEXT NOT NULL,
     quantity NUMERIC NOT NULL,
+    purchase_price NUMERIC NOT NULL DEFAULT 0,
+    line_total NUMERIC NOT NULL DEFAULT 0,
+    production_date TEXT NULL,
     unit_cost NUMERIC NOT NULL,
     expiry_date TEXT NULL,
     remark TEXT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
     FOREIGN KEY (purchase_record_id) REFERENCES purchase_records(id),
     FOREIGN KEY (product_id) REFERENCES products(id)
 );
@@ -165,6 +182,7 @@ CREATE INDEX IF NOT EXISTS idx_products_category_id ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_stock_batches_product_id ON stock_batches(product_id);
 CREATE INDEX IF NOT EXISTS idx_stock_batches_expiry_date ON stock_batches(expiry_date);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_product_id ON purchase_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_sales_orders_sold_at ON sales_orders(sold_at);
 CREATE INDEX IF NOT EXISTS idx_credit_records_status ON credit_records(status);
 CREATE INDEX IF NOT EXISTS idx_backup_logs_created_at ON backup_logs(created_at);

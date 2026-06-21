@@ -90,6 +90,66 @@ WHERE 1 = 1;";
                     command.CommandText = "CREATE INDEX IF NOT EXISTS idx_products_status ON products(status);";
                     command.ExecuteNonQuery();
                 }
+
+                EnsurePurchaseColumns(connection);
+                EnsurePurchaseIndexes(connection);
+            }
+        }
+
+        private static void EnsurePurchaseColumns(SQLiteConnection connection)
+        {
+            EnsureColumn(connection, "purchase_records", "purchase_no", "TEXT NULL");
+            EnsureColumn(connection, "purchase_records", "purchase_date", "TEXT NULL");
+            EnsureColumn(connection, "purchase_records", "updated_at", "TEXT NULL");
+            if (HasColumn(connection, "purchase_records", "purchased_at"))
+            {
+                CopyDateColumnWhenEmpty(connection, "purchase_records", "purchased_at", "purchase_date");
+            }
+
+            EnsureColumn(connection, "purchase_items", "product_name_snapshot", "TEXT NULL");
+            EnsureColumn(connection, "purchase_items", "purchase_price", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "purchase_items", "line_total", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "purchase_items", "production_date", "TEXT NULL");
+            EnsureColumn(connection, "purchase_items", "created_at", "TEXT NULL");
+            EnsureColumn(connection, "purchase_items", "updated_at", "TEXT NULL");
+            if (HasColumn(connection, "purchase_items", "unit_cost"))
+            {
+                CopyColumnValue(connection, "purchase_items", "unit_cost", "purchase_price");
+            }
+
+            EnsureColumn(connection, "stock_batches", "batch_code", "TEXT NULL");
+            EnsureColumn(connection, "stock_batches", "source_type", "TEXT NULL");
+            EnsureColumn(connection, "stock_batches", "source_id", "INTEGER NULL");
+            EnsureColumn(connection, "stock_batches", "quantity_in", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "stock_batches", "quantity_remaining", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "stock_batches", "purchase_price", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "stock_batches", "production_date", "TEXT NULL");
+            EnsureColumn(connection, "stock_batches", "updated_at", "TEXT NULL");
+            if (HasColumn(connection, "stock_batches", "quantity"))
+            {
+                CopyColumnValue(connection, "stock_batches", "quantity", "quantity_in");
+            }
+
+            if (HasColumn(connection, "stock_batches", "remaining_quantity"))
+            {
+                CopyColumnValue(connection, "stock_batches", "remaining_quantity", "quantity_remaining");
+            }
+
+            if (HasColumn(connection, "stock_batches", "unit_cost"))
+            {
+                CopyColumnValue(connection, "stock_batches", "unit_cost", "purchase_price");
+            }
+        }
+
+        private static void EnsurePurchaseIndexes(SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+CREATE INDEX IF NOT EXISTS idx_purchase_records_purchase_date ON purchase_records(purchase_date);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_product_id ON purchase_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_stock_batches_batch_code ON stock_batches(batch_code);";
+                command.ExecuteNonQuery();
             }
         }
 
@@ -140,6 +200,24 @@ WHERE 1 = 1;";
             using (SQLiteCommand command = connection.CreateCommand())
             {
                 command.CommandText = string.Format("UPDATE {0} SET {1} = {2};", tableName, targetColumn, sourceColumn);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void CopyDateColumnWhenEmpty(SQLiteConnection connection, string tableName, string sourceColumn, string targetColumn)
+        {
+            if (!HasColumn(connection, tableName, sourceColumn) || !HasColumn(connection, tableName, targetColumn))
+            {
+                return;
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = string.Format(
+                    "UPDATE {0} SET {1} = {2} WHERE {1} IS NULL OR {1} = '';",
+                    tableName,
+                    targetColumn,
+                    sourceColumn);
                 command.ExecuteNonQuery();
             }
         }

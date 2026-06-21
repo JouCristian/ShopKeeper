@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AppConfig>
+  <StoreName>第四阶段测试店</StoreName>
+  <DatabasePath>E:\Project-CodeX\ShopKeeper\src\XiaoPuZhangGui\bin\Debug\database\shop.db</DatabasePath>
+  <BackupPath>E:\Project-CodeX\ShopKeeper\src\XiaoPuZhangGui\bin\Debug\backups</BackupPath>
+  <IsInitialized>true</IsInitialized>
+  <PinHash>6LWlGBucFtyaBIkK84JDayuJdFesd0vnJdbEzEVuXaw=</PinHash>
+  <PinSalt>FDyzLBkerVviJmgM6Mktkg==</PinSalt>
+  <RecoveryKeyHash>4Xc6xducSYXaPuFW2OHNTZRtUNQ2BofBJ7sFYJmIfgw=</RecoveryKeyHash>
+  <RecoveryKeySalt>zXN5+82qnyg+yEQ9TaGhkQ==</RecoveryKeySalt>
+</AppConfig>

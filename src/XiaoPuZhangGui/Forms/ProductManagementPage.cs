@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -118,9 +119,7 @@ namespace XiaoPuZhangGui.Forms
             };
             _grid.CellContentClick += Grid_CellContentClick;
             _grid.CellDoubleClick += Grid_CellDoubleClick;
-            _grid.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
-            _grid.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F);
-            _grid.RowTemplate.Height = 34;
+            GridStyleHelper.ApplyStandardStyle(_grid);
 
             BuildColumns();
 

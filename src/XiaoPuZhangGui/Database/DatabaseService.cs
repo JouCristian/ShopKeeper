@@ -95,6 +95,8 @@ WHERE 1 = 1;";
                 EnsurePurchaseIndexes(connection);
                 EnsureSalesColumns(connection);
                 EnsureSalesIndexes(connection);
+                EnsureInventoryColumns(connection);
+                EnsureInventoryIndexes(connection);
             }
         }
 
@@ -199,6 +201,57 @@ CREATE INDEX IF NOT EXISTS idx_stock_batches_batch_code ON stock_batches(batch_c
                 command.CommandText = @"
 CREATE INDEX IF NOT EXISTS idx_sales_orders_sale_time ON sales_orders(sale_time);
 CREATE INDEX IF NOT EXISTS idx_sales_items_product_id ON sales_items(product_id);";
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void EnsureInventoryColumns(SQLiteConnection connection)
+        {
+            EnsureColumn(connection, "inventory_checks", "check_no", "TEXT NULL");
+            EnsureColumn(connection, "inventory_checks", "check_date", "TEXT NULL");
+            EnsureColumn(connection, "inventory_checks", "total_profit_quantity", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_checks", "total_loss_quantity", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_checks", "total_profit_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_checks", "total_loss_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_checks", "remark", "TEXT NULL");
+            EnsureColumn(connection, "inventory_checks", "created_at", "TEXT NULL");
+            EnsureColumn(connection, "inventory_checks", "updated_at", "TEXT NULL");
+
+            EnsureColumn(connection, "inventory_check_items", "inventory_check_id", "INTEGER NULL");
+            EnsureColumn(connection, "inventory_check_items", "product_id", "INTEGER NULL");
+            EnsureColumn(connection, "inventory_check_items", "product_name_snapshot", "TEXT NULL");
+            EnsureColumn(connection, "inventory_check_items", "system_stock", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_check_items", "actual_stock", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_check_items", "difference_quantity", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_check_items", "cost_price_snapshot", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_check_items", "difference_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "inventory_check_items", "reason", "TEXT NULL");
+            EnsureColumn(connection, "inventory_check_items", "remark", "TEXT NULL");
+            EnsureColumn(connection, "inventory_check_items", "created_at", "TEXT NULL");
+            EnsureColumn(connection, "inventory_check_items", "updated_at", "TEXT NULL");
+
+            EnsureColumn(connection, "scrap_records", "scrap_no", "TEXT NULL");
+            EnsureColumn(connection, "scrap_records", "scrap_date", "TEXT NULL");
+            EnsureColumn(connection, "scrap_records", "product_id", "INTEGER NULL");
+            EnsureColumn(connection, "scrap_records", "product_name_snapshot", "TEXT NULL");
+            EnsureColumn(connection, "scrap_records", "quantity", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "scrap_records", "cost_price_snapshot", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "scrap_records", "loss_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "scrap_records", "reason", "TEXT NULL");
+            EnsureColumn(connection, "scrap_records", "remark", "TEXT NULL");
+            EnsureColumn(connection, "scrap_records", "created_at", "TEXT NULL");
+            EnsureColumn(connection, "scrap_records", "updated_at", "TEXT NULL");
+        }
+
+        private static void EnsureInventoryIndexes(SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+CREATE INDEX IF NOT EXISTS idx_inventory_checks_check_date ON inventory_checks(check_date);
+CREATE INDEX IF NOT EXISTS idx_inventory_check_items_product_id ON inventory_check_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_scrap_records_scrap_date ON scrap_records(scrap_date);
+CREATE INDEX IF NOT EXISTS idx_scrap_records_product_id ON scrap_records(product_id);";
                 command.ExecuteNonQuery();
             }
         }

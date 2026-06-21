@@ -177,6 +177,53 @@ CREATE TABLE IF NOT EXISTS waste_records (
     FOREIGN KEY (stock_batch_id) REFERENCES stock_batches(id)
 );
 
+CREATE TABLE IF NOT EXISTS inventory_checks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    check_no TEXT NOT NULL UNIQUE,
+    check_date TEXT NOT NULL,
+    total_profit_quantity NUMERIC NOT NULL DEFAULT 0,
+    total_loss_quantity NUMERIC NOT NULL DEFAULT 0,
+    total_profit_amount NUMERIC NOT NULL DEFAULT 0,
+    total_loss_amount NUMERIC NOT NULL DEFAULT 0,
+    remark TEXT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL
+);
+
+CREATE TABLE IF NOT EXISTS inventory_check_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    inventory_check_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    product_name_snapshot TEXT NOT NULL,
+    system_stock NUMERIC NOT NULL DEFAULT 0,
+    actual_stock NUMERIC NOT NULL DEFAULT 0,
+    difference_quantity NUMERIC NOT NULL DEFAULT 0,
+    cost_price_snapshot NUMERIC NOT NULL DEFAULT 0,
+    difference_amount NUMERIC NOT NULL DEFAULT 0,
+    reason TEXT NULL,
+    remark TEXT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
+    FOREIGN KEY (inventory_check_id) REFERENCES inventory_checks(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+CREATE TABLE IF NOT EXISTS scrap_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    scrap_no TEXT NOT NULL UNIQUE,
+    scrap_date TEXT NOT NULL,
+    product_id INTEGER NOT NULL,
+    product_name_snapshot TEXT NOT NULL,
+    quantity NUMERIC NOT NULL,
+    cost_price_snapshot NUMERIC NOT NULL DEFAULT 0,
+    loss_amount NUMERIC NOT NULL DEFAULT 0,
+    reason TEXT NOT NULL,
+    remark TEXT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
 CREATE TABLE IF NOT EXISTS backup_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     backup_type TEXT NOT NULL,
@@ -194,6 +241,10 @@ CREATE INDEX IF NOT EXISTS idx_stock_batches_expiry_date ON stock_batches(expiry
 CREATE INDEX IF NOT EXISTS idx_purchase_items_product_id ON purchase_items(product_id);
 CREATE INDEX IF NOT EXISTS idx_sales_orders_sold_at ON sales_orders(sold_at);
 CREATE INDEX IF NOT EXISTS idx_sales_items_product_id ON sales_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_checks_check_date ON inventory_checks(check_date);
+CREATE INDEX IF NOT EXISTS idx_inventory_check_items_product_id ON inventory_check_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_scrap_records_scrap_date ON scrap_records(scrap_date);
+CREATE INDEX IF NOT EXISTS idx_scrap_records_product_id ON scrap_records(product_id);
 CREATE INDEX IF NOT EXISTS idx_credit_records_status ON credit_records(status);
 CREATE INDEX IF NOT EXISTS idx_backup_logs_created_at ON backup_logs(created_at);
 

@@ -81,9 +81,12 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal,
-                SplitterDistance = 255,
+                SplitterDistance = 180,
+                Panel1MinSize = 120,
+                Panel2MinSize = 120,
                 BackColor = BackColor
             };
+            split.SizeChanged += delegate { AdjustSalesSplit(split); };
 
             _lineGrid = CreateGrid();
             _lineGrid.DataSource = _lineBindingSource;
@@ -171,6 +174,27 @@ namespace XiaoPuZhangGui.Forms
             inputPanel.Controls.Add(_priceLabel);
             inputPanel.Controls.Add(_costLabel);
             inputPanel.Controls.Add(_expiryLabel);
+        }
+
+        private static void AdjustSalesSplit(SplitContainer split)
+        {
+            const int minimumTopHeight = 180;
+            const int minimumBottomHeight = 280;
+            const int desiredBottomHeight = 300;
+
+            if (split.Height <= minimumTopHeight + minimumBottomHeight)
+            {
+                return;
+            }
+
+            int desiredDistance = split.Height - desiredBottomHeight;
+            int maxDistance = split.Height - minimumBottomHeight;
+            int distance = Math.Max(minimumTopHeight, Math.Min(desiredDistance, maxDistance));
+
+            if (split.SplitterDistance != distance)
+            {
+                split.SplitterDistance = distance;
+            }
         }
 
         private void BuildSummaryPanel(Panel summaryPanel)
@@ -488,7 +512,7 @@ namespace XiaoPuZhangGui.Forms
                 Minimum = minimum,
                 Maximum = maximum,
                 DecimalPlaces = decimalPlaces,
-                Increment = decimalPlaces == 3 ? 0.5M : 0.1M,
+                Increment = decimalPlaces == 3 ? 1 : 0.1M,
                 Value = minimum <= 1 && maximum >= 1 ? 1 : minimum,
                 TextAlign = HorizontalAlignment.Right,
                 Font = new Font("Microsoft YaHei UI", 11F)

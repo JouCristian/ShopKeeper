@@ -9,6 +9,7 @@ namespace XiaoPuZhangGui.Forms
         private const string SalesManagementTitle = "销售记账";
         private const string ProductManagementTitle = "商品管理";
         private const string PurchaseManagementTitle = "进货入库";
+        private const string InventoryCheckTitle = "库存盘点";
         private const string SettingsTitle = "系统设置";
 
         private readonly Panel _navigationPanel;
@@ -67,7 +68,7 @@ namespace XiaoPuZhangGui.Forms
             AddNavigationButton(SalesManagementTitle, "多商品开单、应收、成本、毛利润和库存扣减。");
             AddNavigationButton(ProductManagementTitle, "商品档案、分类、售价、库存预警和保质期设置入口。");
             AddNavigationButton(PurchaseManagementTitle, "采购入库、批次、进价和到期日期登记入口。");
-            AddNavigationButton("库存盘点", "库存修正、盈亏原因和报废处理入口。");
+            AddNavigationButton(InventoryCheckTitle, "库存修正、盈亏原因和报废处理入口。");
             AddNavigationButton("赊账管理", "欠款查询、还款登记和备注管理入口。");
             AddNavigationButton("报表导出", "日报、月报、排行和 Excel/WPS 导出入口。");
             AddNavigationButton(SettingsTitle, "店铺信息、数据库路径、备份路径和恢复相关设置入口。");
@@ -138,6 +139,12 @@ namespace XiaoPuZhangGui.Forms
             if (title == PurchaseManagementTitle)
             {
                 _contentPanel.Controls.Add(new PurchaseManagementPage());
+                return;
+            }
+
+            if (title == InventoryCheckTitle)
+            {
+                _contentPanel.Controls.Add(new InventoryCheckPage());
                 return;
             }
 

@@ -9,7 +9,7 @@ namespace XiaoPuZhangGui.Utils
         {
             grid.EnableHeadersVisualStyles = false;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.ColumnHeadersHeight = 36;
+            grid.ColumnHeadersHeight = 42;
             grid.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold);
             grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(232, 244, 255);
             grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(33, 37, 41);

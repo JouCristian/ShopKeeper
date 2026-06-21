@@ -45,6 +45,9 @@
   <ItemGroup>
     <Compile Include="Database\DatabaseService.cs" />
     <Compile Include="Forms\CategoryManagementForm.cs" />
+    <Compile Include="Forms\CreditDetailForm.cs" />
+    <Compile Include="Forms\CreditManagementPage.cs" />
+    <Compile Include="Forms\CreditPaymentForm.cs" />
     <Compile Include="Forms\FirstRunForm.cs" />
     <Compile Include="Forms\InventoryCheckDetailForm.cs" />
     <Compile Include="Forms\InventoryCheckEditForm.cs" />
@@ -64,6 +67,8 @@
     <Compile Include="Forms\SettingsPage.cs" />
     <Compile Include="Models\AppConfig.cs" />
     <Compile Include="Models\Category.cs" />
+    <Compile Include="Models\CreditPayment.cs" />
+    <Compile Include="Models\CreditRecord.cs" />
     <Compile Include="Models\InventoryCheck.cs" />
     <Compile Include="Models\InventoryCheckItem.cs" />
     <Compile Include="Models\Product.cs" />
@@ -76,6 +81,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\CategoryRepository.cs" />
+    <Compile Include="Repositories\CreditRepository.cs" />
     <Compile Include="Repositories\InventoryCheckRepository.cs" />
     <Compile Include="Repositories\ProductRepository.cs" />
     <Compile Include="Repositories\PurchaseRepository.cs" />
@@ -85,6 +91,7 @@
     <Compile Include="Services\AppConfigService.cs" />
     <Compile Include="Services\AuthService.cs" />
     <Compile Include="Services\CategoryService.cs" />
+    <Compile Include="Services\CreditService.cs" />
     <Compile Include="Services\InventoryCheckService.cs" />
     <Compile Include="Services\ProductService.cs" />
     <Compile Include="Services\PurchaseService.cs" />

@@ -130,7 +130,13 @@ namespace XiaoPuZhangGui.Services
             }
 
             order.GrossProfit = order.TotalAmount - order.TotalCost;
-            order.PaidAmount = order.TotalAmount;
+            if (!order.PaidAmountSpecified)
+            {
+                order.PaidAmount = order.TotalAmount;
+            }
+
+            order.CreditAmount = order.PaidAmount < order.TotalAmount ? order.TotalAmount - order.PaidAmount : 0;
+            order.DebtorName = (order.DebtorName ?? string.Empty).Trim();
         }
 
         private bool Validate(SalesOrder order, out string message)
@@ -170,6 +176,18 @@ namespace XiaoPuZhangGui.Services
                     message = "第 " + rowNumber + " 行销售单价不能小于 0。";
                     return false;
                 }
+            }
+
+            if (order.PaidAmount < 0)
+            {
+                message = "实收金额不能小于 0。";
+                return false;
+            }
+
+            if (order.CreditAmount > 0 && string.IsNullOrWhiteSpace(order.DebtorName))
+            {
+                message = "存在赊账时，请填写欠款人备注。";
+                return false;
             }
 
             message = string.Empty;

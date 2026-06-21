@@ -128,14 +128,34 @@ CREATE TABLE IF NOT EXISTS sales_items (
 
 CREATE TABLE IF NOT EXISTS credit_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    credit_no TEXT NULL UNIQUE,
     sales_order_id INTEGER NOT NULL,
-    contact_remark TEXT NOT NULL,
-    credit_amount NUMERIC NOT NULL,
+    debtor_name TEXT NULL,
+    original_amount NUMERIC NOT NULL DEFAULT 0,
+    paid_amount NUMERIC NOT NULL DEFAULT 0,
+    remaining_amount NUMERIC NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Unpaid',
+    credit_date TEXT NULL,
+    settled_at TEXT NULL,
+    remark TEXT NULL,
+    contact_remark TEXT NULL,
+    credit_amount NUMERIC NOT NULL DEFAULT 0,
     repaid_amount NUMERIC NOT NULL DEFAULT 0,
-    balance_amount NUMERIC NOT NULL,
-    status TEXT NOT NULL DEFAULT '未结清',
+    balance_amount NUMERIC NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
     FOREIGN KEY (sales_order_id) REFERENCES sales_orders(id)
+);
+
+CREATE TABLE IF NOT EXISTS credit_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    credit_record_id INTEGER NOT NULL,
+    payment_date TEXT NOT NULL,
+    amount NUMERIC NOT NULL DEFAULT 0,
+    remark TEXT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NULL,
+    FOREIGN KEY (credit_record_id) REFERENCES credit_records(id)
 );
 
 CREATE TABLE IF NOT EXISTS repayment_records (

@@ -144,6 +144,17 @@ ORDER BY id ASC;";
                         CalculateTotals(order);
                         long orderId = InsertOrder(connection, transaction, order);
 
+                        if (order.CreditAmount > 0)
+                        {
+                            CreditRepository.InsertInitialCredit(
+                                connection,
+                                transaction,
+                                orderId,
+                                order.DebtorName,
+                                order.CreditAmount,
+                                order.Remark);
+                        }
+
                         foreach (SalesItem item in order.Items)
                         {
                             ProductSnapshot product = GetProductSnapshot(connection, transaction, item.ProductId);
@@ -194,7 +205,7 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@cost_amount", order.TotalCost);
                 command.Parameters.AddWithValue("@gross_profit", order.GrossProfit);
                 command.Parameters.AddWithValue("@paid_amount", order.PaidAmount);
-                command.Parameters.AddWithValue("@credit_amount", 0);
+                command.Parameters.AddWithValue("@credit_amount", order.CreditAmount);
                 command.Parameters.AddWithValue("@remark", EmptyToDbNull(order.Remark));
                 command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 return (long)command.ExecuteScalar();
@@ -402,7 +413,12 @@ WHERE id = @id;";
             }
 
             order.GrossProfit = order.TotalAmount - order.TotalCost;
-            order.PaidAmount = order.TotalAmount;
+            if (!order.PaidAmountSpecified)
+            {
+                order.PaidAmount = order.TotalAmount;
+            }
+
+            order.CreditAmount = order.PaidAmount < order.TotalAmount ? order.TotalAmount - order.PaidAmount : 0;
         }
 
         private static DateTime ParseDateTime(SQLiteDataReader reader, int index)

@@ -18,7 +18,9 @@ namespace XiaoPuZhangGui.Forms
         private ComboBox _productComboBox;
         private NumericUpDown _quantityNumeric;
         private NumericUpDown _priceNumeric;
+        private NumericUpDown _paidAmountNumeric;
         private TextBox _remarkTextBox;
+        private TextBox _debtorNameTextBox;
         private Label _stockLabel;
         private Label _priceLabel;
         private Label _costLabel;
@@ -26,8 +28,11 @@ namespace XiaoPuZhangGui.Forms
         private Label _totalAmountLabel;
         private Label _totalCostLabel;
         private Label _profitLabel;
+        private Label _creditAmountLabel;
         private DataGridView _lineGrid;
         private DataGridView _orderGrid;
+        private bool _syncingPaidAmount;
+        private bool _paidAmountTouched;
 
         public SalesManagementPage()
         {
@@ -71,7 +76,7 @@ namespace XiaoPuZhangGui.Forms
             Panel summaryPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 96,
+                Height = 118,
                 BackColor = Color.White,
                 Padding = new Padding(14, 12, 14, 12)
             };
@@ -201,27 +206,72 @@ namespace XiaoPuZhangGui.Forms
         {
             _remarkTextBox = new TextBox
             {
-                Location = new Point(72, 21),
-                Size = new Size(310, 30),
+                Location = new Point(72, 14),
+                Size = new Size(300, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
 
-            _totalAmountLabel = CreateSummaryLabel(405, "应收金额：0.00");
-            _totalCostLabel = CreateSummaryLabel(555, "商品成本：0.00");
-            _profitLabel = CreateSummaryLabel(705, "本单毛利：0.00");
+            _paidAmountNumeric = new NumericUpDown
+            {
+                Location = new Point(460, 14),
+                Size = new Size(120, 30),
+                Minimum = 0,
+                Maximum = 9999999,
+                DecimalPlaces = 2,
+                Increment = 1,
+                TextAlign = HorizontalAlignment.Right,
+                Font = new Font("Microsoft YaHei UI", 11F)
+            };
+            _paidAmountNumeric.ValueChanged += PaidAmountNumeric_ValueChanged;
+
+            _debtorNameTextBox = new TextBox
+            {
+                Location = new Point(770, 14),
+                Size = new Size(170, 30),
+                Font = new Font("Microsoft YaHei UI", 11F)
+            };
+
+            _creditAmountLabel = new Label
+            {
+                Text = "新增赊账：0.00",
+                Location = new Point(590, 14),
+                Size = new Size(140, 30),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(220, 53, 69)
+            };
+
+            _totalAmountLabel = CreateSummaryLabel(405, 58, "应收金额：0.00");
+            _totalCostLabel = CreateSummaryLabel(555, 58, "商品成本：0.00");
+            _profitLabel = CreateSummaryLabel(705, 58, "本单毛利：0.00");
 
             Button saveButton = CreateButton("保存销售单", Color.FromArgb(0, 123, 255), 120, 50);
             saveButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            saveButton.Location = new Point(summaryPanel.Width - 135, 49);
+            saveButton.Location = new Point(summaryPanel.Width - 135, 66);
             saveButton.Click += SaveButton_Click;
-            summaryPanel.Resize += delegate { saveButton.Location = new Point(summaryPanel.Width - 135, 49); };
+            summaryPanel.Resize += delegate { saveButton.Location = new Point(summaryPanel.Width - 135, 66); };
 
-            summaryPanel.Controls.Add(CreateLabel("备注", 14, 23, 52));
+            summaryPanel.Controls.Add(CreateLabel("备注", 14, 16, 52));
             summaryPanel.Controls.Add(_remarkTextBox);
+            summaryPanel.Controls.Add(CreateLabel("实收", 405, 16, 48));
+            summaryPanel.Controls.Add(_paidAmountNumeric);
+            summaryPanel.Controls.Add(_creditAmountLabel);
+            summaryPanel.Controls.Add(CreateLabel("欠款人", 710, 16, 58));
+            summaryPanel.Controls.Add(_debtorNameTextBox);
             summaryPanel.Controls.Add(_totalAmountLabel);
             summaryPanel.Controls.Add(_totalCostLabel);
             summaryPanel.Controls.Add(_profitLabel);
             summaryPanel.Controls.Add(saveButton);
+        }
+
+        private void PaidAmountNumeric_ValueChanged(object sender, EventArgs e)
+        {
+            if (!_syncingPaidAmount)
+            {
+                _paidAmountTouched = true;
+            }
+
+            RefreshCreditAmount();
         }
 
         private void BuildLineColumns()
@@ -391,6 +441,8 @@ namespace XiaoPuZhangGui.Forms
             MessageBox.Show(message, "保存成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
             _lines.Clear();
             _remarkTextBox.Clear();
+            _debtorNameTextBox.Clear();
+            _paidAmountTouched = false;
             LoadProducts();
             LoadTodayOrders();
             RefreshTotals();
@@ -401,7 +453,10 @@ namespace XiaoPuZhangGui.Forms
             SalesOrder order = new SalesOrder
             {
                 SaleTime = DateTime.Now,
-                Remark = _remarkTextBox.Text
+                Remark = _remarkTextBox.Text,
+                PaidAmount = _paidAmountNumeric.Value,
+                PaidAmountSpecified = true,
+                DebtorName = _debtorNameTextBox.Text
             };
 
             foreach (SalesLineView line in _lines)
@@ -473,7 +528,38 @@ namespace XiaoPuZhangGui.Forms
             _totalAmountLabel.Text = "应收金额：" + totalAmount.ToString("N2");
             _totalCostLabel.Text = "商品成本：" + totalCost.ToString("N2");
             _profitLabel.Text = "本单毛利：" + profit.ToString("N2");
+            if (!_paidAmountTouched)
+            {
+                SetPaidAmount(totalAmount);
+            }
+
+            RefreshCreditAmount();
             _lineBindingSource.ResetBindings(false);
+        }
+
+        private void RefreshCreditAmount()
+        {
+            decimal totalAmount = 0;
+            foreach (SalesLineView line in _lines)
+            {
+                totalAmount += line.LineAmount;
+            }
+
+            decimal creditAmount = _paidAmountNumeric.Value < totalAmount ? totalAmount - _paidAmountNumeric.Value : 0;
+            _creditAmountLabel.Text = "新增赊账：" + creditAmount.ToString("N2");
+            _debtorNameTextBox.Enabled = creditAmount > 0;
+            if (creditAmount == 0)
+            {
+                _debtorNameTextBox.Clear();
+            }
+        }
+
+        private void SetPaidAmount(decimal value)
+        {
+            decimal safeValue = Clamp(value, _paidAmountNumeric.Minimum, _paidAmountNumeric.Maximum);
+            _syncingPaidAmount = true;
+            _paidAmountNumeric.Value = safeValue;
+            _syncingPaidAmount = false;
         }
 
         private void ClearProductInfo()
@@ -558,12 +644,12 @@ namespace XiaoPuZhangGui.Forms
             };
         }
 
-        private static Label CreateSummaryLabel(int left, string text)
+        private static Label CreateSummaryLabel(int left, int top, string text)
         {
             return new Label
             {
                 Text = text,
-                Location = new Point(left, 21),
+                Location = new Point(left, top),
                 Size = new Size(150, 30),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold)

@@ -24,6 +24,12 @@ namespace XiaoPuZhangGui.Models
 
         public decimal PaidAmount { get; set; }
 
+        public bool PaidAmountSpecified { get; set; }
+
+        public decimal CreditAmount { get; set; }
+
+        public string DebtorName { get; set; }
+
         public string Remark { get; set; }
 
         public DateTime CreatedAt { get; set; }

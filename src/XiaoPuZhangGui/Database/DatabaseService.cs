@@ -97,6 +97,8 @@ WHERE 1 = 1;";
                 EnsureSalesIndexes(connection);
                 EnsureInventoryColumns(connection);
                 EnsureInventoryIndexes(connection);
+                EnsureCreditColumns(connection);
+                EnsureCreditIndexes(connection);
             }
         }
 
@@ -256,6 +258,84 @@ CREATE INDEX IF NOT EXISTS idx_scrap_records_product_id ON scrap_records(product
             }
         }
 
+        private static void EnsureCreditColumns(SQLiteConnection connection)
+        {
+            EnsureColumn(connection, "credit_records", "credit_no", "TEXT NULL");
+            EnsureColumn(connection, "credit_records", "debtor_name", "TEXT NULL");
+            EnsureColumn(connection, "credit_records", "original_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "credit_records", "paid_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "credit_records", "remaining_amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "credit_records", "credit_date", "TEXT NULL");
+            EnsureColumn(connection, "credit_records", "settled_at", "TEXT NULL");
+            EnsureColumn(connection, "credit_records", "remark", "TEXT NULL");
+            EnsureColumn(connection, "credit_records", "updated_at", "TEXT NULL");
+
+            if (HasColumn(connection, "credit_records", "contact_remark"))
+            {
+                CopyColumnValueWhenEmpty(connection, "credit_records", "contact_remark", "debtor_name");
+            }
+
+            if (HasColumn(connection, "credit_records", "credit_amount"))
+            {
+                CopyColumnValueWhenZero(connection, "credit_records", "credit_amount", "original_amount");
+            }
+
+            if (HasColumn(connection, "credit_records", "repaid_amount"))
+            {
+                CopyColumnValueWhenZero(connection, "credit_records", "repaid_amount", "paid_amount");
+            }
+
+            if (HasColumn(connection, "credit_records", "balance_amount"))
+            {
+                CopyColumnValueWhenZero(connection, "credit_records", "balance_amount", "remaining_amount");
+            }
+
+            if (HasColumn(connection, "credit_records", "created_at"))
+            {
+                CopyDateColumnWhenEmpty(connection, "credit_records", "created_at", "credit_date");
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+UPDATE credit_records
+SET credit_no = 'CRD-LEGACY-' || id
+WHERE credit_no IS NULL OR credit_no = '';
+
+UPDATE credit_records
+SET debtor_name = '熟人未留名'
+WHERE debtor_name IS NULL OR debtor_name = '';
+
+UPDATE credit_records
+SET status = CASE
+    WHEN status IN ('Settled', '已结清') OR remaining_amount <= 0 THEN 'Settled'
+    WHEN paid_amount > 0 AND remaining_amount > 0 THEN 'PartiallyPaid'
+    ELSE 'Unpaid'
+END;";
+                command.ExecuteNonQuery();
+            }
+
+            EnsureColumn(connection, "credit_payments", "credit_record_id", "INTEGER NULL");
+            EnsureColumn(connection, "credit_payments", "payment_date", "TEXT NULL");
+            EnsureColumn(connection, "credit_payments", "amount", "NUMERIC NOT NULL DEFAULT 0");
+            EnsureColumn(connection, "credit_payments", "remark", "TEXT NULL");
+            EnsureColumn(connection, "credit_payments", "created_at", "TEXT NULL");
+            EnsureColumn(connection, "credit_payments", "updated_at", "TEXT NULL");
+        }
+
+        private static void EnsureCreditIndexes(SQLiteConnection connection)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+CREATE INDEX IF NOT EXISTS idx_credit_records_status ON credit_records(status);
+CREATE INDEX IF NOT EXISTS idx_credit_records_credit_date ON credit_records(credit_date);
+CREATE INDEX IF NOT EXISTS idx_credit_records_debtor_name ON credit_records(debtor_name);
+CREATE INDEX IF NOT EXISTS idx_credit_payments_credit_record_id ON credit_payments(credit_record_id);";
+                command.ExecuteNonQuery();
+            }
+        }
+
         private static bool EnsureColumn(SQLiteConnection connection, string tableName, string columnName, string columnDefinition)
         {
             if (HasColumn(connection, tableName, columnName))
@@ -318,6 +398,24 @@ CREATE INDEX IF NOT EXISTS idx_scrap_records_product_id ON scrap_records(product
             {
                 command.CommandText = string.Format(
                     "UPDATE {0} SET {1} = {2} WHERE {1} IS NULL OR {1} = 0;",
+                    tableName,
+                    targetColumn,
+                    sourceColumn);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void CopyColumnValueWhenEmpty(SQLiteConnection connection, string tableName, string sourceColumn, string targetColumn)
+        {
+            if (!HasColumn(connection, tableName, sourceColumn) || !HasColumn(connection, tableName, targetColumn))
+            {
+                return;
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = string.Format(
+                    "UPDATE {0} SET {1} = {2} WHERE {1} IS NULL OR {1} = '';",
                     tableName,
                     targetColumn,
                     sourceColumn);

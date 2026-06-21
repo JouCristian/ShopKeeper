@@ -44,16 +44,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Database\DatabaseService.cs" />
+    <Compile Include="Forms\FirstRunForm.cs" />
+    <Compile Include="Forms\LoginForm.cs" />
     <Compile Include="Forms\MainForm.cs" />
     <Compile Include="Forms\PlaceholderPage.cs" />
+    <Compile Include="Forms\RecoveryKeyDisplayForm.cs" />
+    <Compile Include="Forms\ResetPinForm.cs" />
+    <Compile Include="Forms\SettingsPage.cs" />
     <Compile Include="Models\AppConfig.cs" />
     <Compile Include="Models\Category.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\CategoryRepository.cs" />
     <Compile Include="Services\AppConfigService.cs" />
+    <Compile Include="Services\AuthService.cs" />
     <Compile Include="Services\StartupService.cs" />
     <Compile Include="Utils\AppPaths.cs" />
+    <Compile Include="Utils\HashHelper.cs" />
+    <Compile Include="Utils\RecoveryKeyGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -45,7 +45,7 @@ namespace XiaoPuZhangGui.Forms
                 AutoSize = false,
                 Dock = DockStyle.Top,
                 Height = 52,
-                Text = "第一阶段占位页面，后续迭代再接入完整业务。",
+                Text = "当前为占位页面，后续阶段再接入完整业务。",
                 Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Regular),
                 ForeColor = Color.FromArgb(108, 117, 125),
                 TextAlign = ContentAlignment.MiddleLeft

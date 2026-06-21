@@ -7,5 +7,15 @@ namespace XiaoPuZhangGui.Models
         public string DatabasePath { get; set; }
 
         public string BackupPath { get; set; }
+
+        public bool IsInitialized { get; set; }
+
+        public string PinHash { get; set; }
+
+        public string PinSalt { get; set; }
+
+        public string RecoveryKeyHash { get; set; }
+
+        public string RecoveryKeySalt { get; set; }
     }
 }

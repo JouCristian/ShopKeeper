@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Forms;
+using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
 
 namespace XiaoPuZhangGui
@@ -16,6 +17,30 @@ namespace XiaoPuZhangGui
             try
             {
                 StartupService.Initialize();
+                AppConfig config = AppConfigService.LoadOrCreateDefault();
+
+                if (!config.IsInitialized)
+                {
+                    using (FirstRunForm firstRunForm = new FirstRunForm())
+                    {
+                        if (firstRunForm.ShowDialog() != DialogResult.OK)
+                        {
+                            return;
+                        }
+                    }
+
+                    Application.Run(new MainForm());
+                    return;
+                }
+
+                using (LoginForm loginForm = new LoginForm())
+                {
+                    if (loginForm.ShowDialog() != DialogResult.OK)
+                    {
+                        return;
+                    }
+                }
+
                 Application.Run(new MainForm());
             }
             catch (Exception ex)

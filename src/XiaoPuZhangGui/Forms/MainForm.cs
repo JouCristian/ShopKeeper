@@ -6,6 +6,8 @@ namespace XiaoPuZhangGui.Forms
 {
     internal sealed class MainForm : Form
     {
+        private const string SettingsTitle = "系统设置";
+
         private readonly Panel _navigationPanel;
         private readonly FlowLayoutPanel _navigationListPanel;
         private readonly Panel _contentPanel;
@@ -65,7 +67,7 @@ namespace XiaoPuZhangGui.Forms
             AddNavigationButton("库存盘点", "库存修正、盈亏原因和报废处理入口。");
             AddNavigationButton("赊账管理", "欠款查询、还款登记和备注管理入口。");
             AddNavigationButton("报表导出", "日报、月报、排行和 Excel/WPS 导出入口。");
-            AddNavigationButton("系统设置", "店铺信息、数据库路径、备份路径和恢复相关设置入口。");
+            AddNavigationButton(SettingsTitle, "店铺信息、数据库路径、备份路径和恢复相关设置入口。");
         }
 
         private void AddBrand()
@@ -87,8 +89,8 @@ namespace XiaoPuZhangGui.Forms
         {
             Button button = new Button
             {
-                Dock = DockStyle.Top,
                 Height = 58,
+                Width = _navigationPanel.Width,
                 Text = title,
                 Tag = description,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -117,6 +119,12 @@ namespace XiaoPuZhangGui.Forms
             }
 
             _contentPanel.Controls.Clear();
+
+            if (title == SettingsTitle)
+            {
+                _contentPanel.Controls.Add(new SettingsPage());
+                return;
+            }
 
             string description = _navigationButtons.ContainsKey(title)
                 ? _navigationButtons[title].Tag.ToString()

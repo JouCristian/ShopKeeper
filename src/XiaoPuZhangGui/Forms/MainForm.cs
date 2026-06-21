@@ -6,6 +6,7 @@ namespace XiaoPuZhangGui.Forms
 {
     internal sealed class MainForm : Form
     {
+        private const string ProductManagementTitle = "商品管理";
         private const string SettingsTitle = "系统设置";
 
         private readonly Panel _navigationPanel;
@@ -62,7 +63,7 @@ namespace XiaoPuZhangGui.Forms
 
             AddNavigationButton("首页看板", "今日销售、利润、低库存和临期提醒。");
             AddNavigationButton("销售记账", "收银单模式入口，后续支持多商品开单、实收和赊账。");
-            AddNavigationButton("商品管理", "商品档案、分类、售价、库存预警和保质期设置入口。");
+            AddNavigationButton(ProductManagementTitle, "商品档案、分类、售价、库存预警和保质期设置入口。");
             AddNavigationButton("进货入库", "采购入库、批次、进价和到期日期登记入口。");
             AddNavigationButton("库存盘点", "库存修正、盈亏原因和报废处理入口。");
             AddNavigationButton("赊账管理", "欠款查询、还款登记和备注管理入口。");
@@ -119,6 +120,12 @@ namespace XiaoPuZhangGui.Forms
             }
 
             _contentPanel.Controls.Clear();
+
+            if (title == ProductManagementTitle)
+            {
+                _contentPanel.Controls.Add(new ProductManagementPage());
+                return;
+            }
 
             if (title == SettingsTitle)
             {

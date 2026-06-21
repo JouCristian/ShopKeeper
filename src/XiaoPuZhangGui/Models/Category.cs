@@ -10,6 +10,15 @@ namespace XiaoPuZhangGui.Models
 
         public bool IsActive { get; set; }
 
+        public int SortOrder { get; set; }
+
         public DateTime CreatedAt { get; set; }
+
+        public DateTime? UpdatedAt { get; set; }
+
+        public string StatusText
+        {
+            get { return IsActive ? "在售" : "停用"; }
+        }
     }
 }

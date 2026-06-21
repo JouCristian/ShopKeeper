@@ -17,18 +17,42 @@ x86/
 packages/
 *.nupkg
 
+# Local runtime config
+app.config.xml
+**/app.config.xml
+
 # Local database
 *.db
 *.sqlite
 *.sqlite3
 shop.db
+**/shop.db
+database/*.db
+Database/*.db
+src/**/database/*.db
+src/**/Database/*.db
 
-# Backups
-backups/
-*.bak
+# Backups - ignore actual backup files, keep .gitkeep
+backups/*
+Backups/*
+src/**/backups/*
+src/**/Backups/*
+!backups/.gitkeep
+!Backups/.gitkeep
+!src/**/backups/.gitkeep
+!src/**/Backups/.gitkeep
 
-# Exports
-exports/
+# Exports - ignore exported reports, keep .gitkeep
+exports/*
+Exports/*
+src/**/exports/*
+src/**/Exports/*
+!exports/.gitkeep
+!Exports/.gitkeep
+!src/**/exports/.gitkeep
+!src/**/Exports/.gitkeep
+
+# Excel / CSV reports
 *.xlsx
 *.xls
 *.csv

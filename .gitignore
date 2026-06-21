@@ -1,0 +1,46 @@
+# Visual Studio
+.vs/
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.pdb
+
+# Build outputs
+Debug/
+Release/
+x64/
+x86/
+
+# NuGet
+packages/
+*.nupkg
+
+# Local database
+*.db
+*.sqlite
+*.sqlite3
+shop.db
+
+# Backups
+backups/
+*.bak
+
+# Exports
+exports/
+*.xlsx
+*.xls
+*.csv
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp

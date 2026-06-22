@@ -17,6 +17,7 @@ namespace XiaoPuZhangGui.Forms
         private TextBox _keywordTextBox;
         private ComboBox _categoryComboBox;
         private DataGridView _checkGrid;
+        private Label _checkEmptyLabel;
         private TextBox _scrapSearchTextBox;
         private ComboBox _scrapProductComboBox;
         private NumericUpDown _scrapQuantityNumeric;
@@ -26,6 +27,7 @@ namespace XiaoPuZhangGui.Forms
         private Label _scrapCostLabel;
         private Label _scrapLossLabel;
         private DataGridView _scrapGrid;
+        private Label _scrapEmptyLabel;
 
         public InventoryCheckPage()
         {
@@ -81,9 +83,9 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 70,
+                Height = 108,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 BackColor = BackColor
             };
 
@@ -112,8 +114,10 @@ namespace XiaoPuZhangGui.Forms
             _checkGrid.DataSource = _checkBindingSource;
             _checkGrid.CellContentClick += CheckGrid_CellContentClick;
             BuildCheckColumns();
+            _checkEmptyLabel = UiStyleHelper.CreateEmptyLabel("暂无盘点单，请先新建盘点单。");
 
             content.Controls.Add(_checkGrid);
+            content.Controls.Add(_checkEmptyLabel);
             content.Controls.Add(filters);
             tab.Controls.Add(content);
         }
@@ -121,7 +125,15 @@ namespace XiaoPuZhangGui.Forms
         private void BuildScrapTab(TabPage tab)
         {
             Panel content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(18), BackColor = BackColor };
-            Panel input = new Panel { Dock = DockStyle.Top, Height = 132, BorderStyle = BorderStyle.FixedSingle, BackColor = Color.White };
+            Panel input = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 142,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White,
+                AutoScroll = true,
+                AutoScrollMinSize = new Size(980, 0)
+            };
 
             _scrapSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(180, 30), Font = new Font("Microsoft YaHei UI", 11F) };
             _scrapSearchTextBox.KeyDown += ScrapSearchTextBox_KeyDown;
@@ -191,8 +203,10 @@ namespace XiaoPuZhangGui.Forms
             _scrapGrid = CreateGrid();
             _scrapGrid.DataSource = _scrapBindingSource;
             BuildScrapColumns();
+            _scrapEmptyLabel = UiStyleHelper.CreateEmptyLabel("暂无报废记录。");
 
             content.Controls.Add(_scrapGrid);
+            content.Controls.Add(_scrapEmptyLabel);
             content.Controls.Add(input);
             tab.Controls.Add(content);
         }
@@ -236,7 +250,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void CheckGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || _checkGrid.Columns[e.ColumnIndex].Name != "DetailColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _checkGrid.Columns[e.ColumnIndex].Name != "DetailColumn")
             {
                 return;
             }
@@ -317,7 +331,9 @@ namespace XiaoPuZhangGui.Forms
         private void LoadChecks()
         {
             ComboBoxItem category = _categoryComboBox.SelectedItem as ComboBoxItem;
-            _checkBindingSource.DataSource = _inventoryCheckService.Search(_keywordTextBox.Text, category == null ? null : category.Id);
+            var checks = _inventoryCheckService.Search(_keywordTextBox.Text, category == null ? null : category.Id);
+            _checkBindingSource.DataSource = checks;
+            _checkEmptyLabel.Visible = checks.Count == 0;
         }
 
         private void LoadScrapProducts()
@@ -350,7 +366,9 @@ namespace XiaoPuZhangGui.Forms
 
         private void LoadScrapRecords()
         {
-            _scrapBindingSource.DataSource = _scrapService.Search();
+            var records = _scrapService.Search();
+            _scrapBindingSource.DataSource = records;
+            _scrapEmptyLabel.Visible = records.Count == 0;
         }
 
         private void RefreshScrapPreview()

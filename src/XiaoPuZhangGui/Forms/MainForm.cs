@@ -24,8 +24,8 @@ namespace XiaoPuZhangGui.Forms
         {
             Text = "小铺掌柜";
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(1024, 640);
-            Size = new Size(1180, 720);
+            MinimumSize = new Size(1100, 680);
+            Size = new Size(1240, 760);
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
             BackColor = Color.White;
 
@@ -34,7 +34,7 @@ namespace XiaoPuZhangGui.Forms
             _navigationPanel = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 210,
+                Width = 220,
                 BackColor = Color.FromArgb(52, 58, 64),
                 Padding = new Padding(0)
             };
@@ -96,7 +96,7 @@ namespace XiaoPuZhangGui.Forms
         {
             Button button = new Button
             {
-                Height = 58,
+                Height = 60,
                 Width = _navigationPanel.Width,
                 Text = title,
                 Tag = description,

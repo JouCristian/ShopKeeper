@@ -129,7 +129,7 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel actions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 110,
+                Height = 132,
                 Padding = new Padding(0, 18, 0, 0),
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
@@ -327,12 +327,19 @@ namespace XiaoPuZhangGui.Forms
 
         private static void OpenDirectory(string directory)
         {
-            if (!Directory.Exists(directory))
+            try
             {
-                Directory.CreateDirectory(directory);
-            }
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
 
-            Process.Start(directory);
+                Process.Start(directory);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开目录失败：\r\n" + ex.Message, "打开目录", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private static void AddRow(TableLayoutPanel table, int rowIndex, string labelText, Control valueControl)

@@ -31,6 +31,8 @@ namespace XiaoPuZhangGui.Forms
         private Label _creditAmountLabel;
         private DataGridView _lineGrid;
         private DataGridView _orderGrid;
+        private Label _lineEmptyLabel;
+        private Label _orderEmptyLabel;
         private bool _syncingPaidAmount;
         private bool _paidAmountTouched;
 
@@ -60,25 +62,29 @@ namespace XiaoPuZhangGui.Forms
             Panel contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(24),
+                Padding = new Padding(16),
                 BackColor = BackColor
             };
 
             Panel inputPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 128,
+                Height = 138,
                 BackColor = Color.White,
-                Padding = new Padding(14)
+                Padding = new Padding(14),
+                AutoScroll = true,
+                AutoScrollMinSize = new Size(980, 0)
             };
             BuildInputPanel(inputPanel);
 
             Panel summaryPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 118,
+                Height = 138,
                 BackColor = Color.White,
-                Padding = new Padding(14, 12, 14, 12)
+                Padding = new Padding(14, 12, 14, 12),
+                AutoScroll = true,
+                AutoScrollMinSize = new Size(1080, 0)
             };
             BuildSummaryPanel(summaryPanel);
 
@@ -97,14 +103,18 @@ namespace XiaoPuZhangGui.Forms
             _lineGrid.DataSource = _lineBindingSource;
             _lineGrid.CellContentClick += LineGrid_CellContentClick;
             BuildLineColumns();
+            _lineEmptyLabel = UiStyleHelper.CreateEmptyLabel("当前销售单暂无商品，请先选择商品并加入销售单。");
 
             _orderGrid = CreateGrid();
             _orderGrid.DataSource = _orderBindingSource;
             _orderGrid.CellContentClick += OrderGrid_CellContentClick;
             BuildOrderColumns();
+            _orderEmptyLabel = UiStyleHelper.CreateEmptyLabel("今日暂无销售单。");
 
             split.Panel1.Controls.Add(_lineGrid);
+            split.Panel1.Controls.Add(_lineEmptyLabel);
             split.Panel2.Controls.Add(_orderGrid);
+            split.Panel2.Controls.Add(_orderEmptyLabel);
 
             Label todayLabel = new Label
             {
@@ -247,9 +257,9 @@ namespace XiaoPuZhangGui.Forms
 
             Button saveButton = CreateButton("保存销售单", Color.FromArgb(0, 123, 255), 120, 50);
             saveButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            saveButton.Location = new Point(summaryPanel.Width - 135, 66);
+            saveButton.Location = new Point(summaryPanel.Width - 135, 86);
             saveButton.Click += SaveButton_Click;
-            summaryPanel.Resize += delegate { saveButton.Location = new Point(summaryPanel.Width - 135, 66); };
+            summaryPanel.Resize += delegate { saveButton.Location = new Point(summaryPanel.Width - 135, 86); };
 
             summaryPanel.Controls.Add(CreateLabel("备注", 14, 16, 52));
             summaryPanel.Controls.Add(_remarkTextBox);
@@ -369,7 +379,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void LineGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || _lineGrid.Columns[e.ColumnIndex].Name != "DeleteColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _lineGrid.Columns[e.ColumnIndex].Name != "DeleteColumn")
             {
                 return;
             }
@@ -380,7 +390,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void OrderGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || _orderGrid.Columns[e.ColumnIndex].Name != "DetailColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _orderGrid.Columns[e.ColumnIndex].Name != "DetailColumn")
             {
                 return;
             }
@@ -510,7 +520,9 @@ namespace XiaoPuZhangGui.Forms
 
         private void LoadTodayOrders()
         {
-            _orderBindingSource.DataSource = _salesService.GetTodayOrders();
+            var orders = _salesService.GetTodayOrders();
+            _orderBindingSource.DataSource = orders;
+            _orderEmptyLabel.Visible = orders.Count == 0;
         }
 
         private void RefreshTotals()
@@ -535,6 +547,7 @@ namespace XiaoPuZhangGui.Forms
 
             RefreshCreditAmount();
             _lineBindingSource.ResetBindings(false);
+            _lineEmptyLabel.Visible = _lines.Count == 0;
         }
 
         private void RefreshCreditAmount()
@@ -548,6 +561,7 @@ namespace XiaoPuZhangGui.Forms
             decimal creditAmount = _paidAmountNumeric.Value < totalAmount ? totalAmount - _paidAmountNumeric.Value : 0;
             _creditAmountLabel.Text = "新增赊账：" + creditAmount.ToString("N2");
             _debtorNameTextBox.Enabled = creditAmount > 0;
+            _debtorNameTextBox.BackColor = creditAmount > 0 ? Color.FromArgb(255, 243, 205) : Color.FromArgb(248, 249, 250);
             if (creditAmount == 0)
             {
                 _debtorNameTextBox.Clear();
@@ -583,7 +597,8 @@ namespace XiaoPuZhangGui.Forms
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 RowHeadersVisible = false,
                 BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.FixedSingle,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells
             };
             GridStyleHelper.ApplyStandardStyle(grid);
             return grid;

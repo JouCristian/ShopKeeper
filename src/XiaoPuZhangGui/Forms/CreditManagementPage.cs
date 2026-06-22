@@ -16,6 +16,7 @@ namespace XiaoPuZhangGui.Forms
         private DateTimePicker _startDatePicker;
         private DateTimePicker _endDatePicker;
         private DataGridView _grid;
+        private Label _emptyLabel;
 
         public CreditManagementPage()
         {
@@ -42,9 +43,9 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 72,
+                Height = 116,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 BackColor = BackColor
             };
 
@@ -93,8 +94,10 @@ namespace XiaoPuZhangGui.Forms
             _grid.CellContentClick += Grid_CellContentClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
             BuildColumns();
+            _emptyLabel = UiStyleHelper.CreateEmptyLabel("暂无赊账记录。");
 
             content.Controls.Add(_grid);
+            content.Controls.Add(_emptyLabel);
             content.Controls.Add(filters);
             Controls.Add(content);
             Controls.Add(titleLabel);
@@ -118,7 +121,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void Grid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0)
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)
             {
                 return;
             }
@@ -166,11 +169,13 @@ namespace XiaoPuZhangGui.Forms
 
         private void LoadRecords()
         {
-            _bindingSource.DataSource = _creditService.Search(
+            var records = _creditService.Search(
                 _startDatePicker.Value.Date,
                 _endDatePicker.Value.Date,
                 _debtorTextBox.Text,
                 _statusComboBox.Text);
+            _bindingSource.DataSource = records;
+            _emptyLabel.Visible = records.Count == 0;
         }
 
         private void AddMoneyColumn(string headerText, string propertyName, int width)

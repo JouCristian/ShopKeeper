@@ -116,6 +116,7 @@
     <Compile Include="Utils\GridStyleHelper.cs" />
     <Compile Include="Utils\HashHelper.cs" />
     <Compile Include="Utils\RecoveryKeyGenerator.cs" />
+    <Compile Include="Utils\UiStyleHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

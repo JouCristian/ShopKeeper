@@ -160,7 +160,8 @@ namespace XiaoPuZhangGui.Forms
             };
             TableLayoutPanel layout = new TableLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                Height = 620,
                 ColumnCount = 1,
                 RowCount = 2,
                 BackColor = Color.FromArgb(248, 249, 250),
@@ -375,9 +376,10 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Fill,
                 Text = "0.00",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
+                Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(33, 37, 41),
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true
             };
         }
 
@@ -469,10 +471,10 @@ namespace XiaoPuZhangGui.Forms
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 MultiSelect = false,
                 BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.None,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+                BorderStyle = BorderStyle.None
             };
             GridStyleHelper.ApplyStandardStyle(grid);
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             return grid;
         }
 

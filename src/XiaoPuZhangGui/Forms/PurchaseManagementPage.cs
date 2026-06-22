@@ -15,6 +15,7 @@ namespace XiaoPuZhangGui.Forms
         private readonly DateTimePicker _endDatePicker;
         private readonly TextBox _keywordTextBox;
         private readonly DataGridView _grid;
+        private readonly Label _emptyLabel;
 
         public PurchaseManagementPage()
         {
@@ -47,9 +48,9 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 72,
+                Height = 116,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 BackColor = BackColor
             };
 
@@ -94,6 +95,7 @@ namespace XiaoPuZhangGui.Forms
             };
             _grid.CellContentClick += Grid_CellContentClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
+            _emptyLabel = UiStyleHelper.CreateEmptyLabel("暂无入库记录，请先新增入库单。");
 
             AddTextColumn("入库单号", "PurchaseNo", 170);
             AddTextColumn("入库日期", "PurchaseDate", 110).DefaultCellStyle.Format = "yyyy-MM-dd";
@@ -112,6 +114,7 @@ namespace XiaoPuZhangGui.Forms
             _grid.Columns.Add(detailColumn);
 
             contentPanel.Controls.Add(_grid);
+            contentPanel.Controls.Add(_emptyLabel);
             contentPanel.Controls.Add(filters);
             Controls.Add(contentPanel);
             Controls.Add(titleLabel);
@@ -132,7 +135,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void Grid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || _grid.Columns[e.ColumnIndex].Name != "DetailColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _grid.Columns[e.ColumnIndex].Name != "DetailColumn")
             {
                 return;
             }
@@ -160,7 +163,9 @@ namespace XiaoPuZhangGui.Forms
 
         private void LoadRecords()
         {
-            _bindingSource.DataSource = _purchaseService.Search(_startDatePicker.Value.Date, _endDatePicker.Value.Date, _keywordTextBox.Text);
+            var records = _purchaseService.Search(_startDatePicker.Value.Date, _endDatePicker.Value.Date, _keywordTextBox.Text);
+            _bindingSource.DataSource = records;
+            _emptyLabel.Visible = records.Count == 0;
         }
 
         private DataGridViewTextBoxColumn AddTextColumn(string headerText, string propertyName, int width)

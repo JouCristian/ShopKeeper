@@ -78,7 +78,7 @@ namespace XiaoPuZhangGui.Forms
             Panel contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(24),
+                Padding = new Padding(16),
                 BackColor = BackColor
             };
 
@@ -99,7 +99,7 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 122,
+                Height = 150,
                 BackColor = Color.White,
                 Padding = new Padding(14, 12, 14, 12)
             };
@@ -107,18 +107,18 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 48,
+                Height = 62,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 BackColor = Color.White
             };
 
             FlowLayoutPanel exportButtons = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
-                Height = 48,
+                Height = 62,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 BackColor = Color.White
             };
 
@@ -354,6 +354,11 @@ namespace XiaoPuZhangGui.Forms
 
         private void LoadSelectedReport()
         {
+            if (!ValidateCustomRange())
+            {
+                return;
+            }
+
             DateTime startTime;
             DateTime endTime;
             ResolveRange(out startTime, out endTime);
@@ -377,6 +382,11 @@ namespace XiaoPuZhangGui.Forms
 
         private void ExportReportButton_Click(object sender, EventArgs e)
         {
+            if (!ValidateCustomRange())
+            {
+                return;
+            }
+
             DateTime startTime;
             DateTime endTime;
             ResolveRange(out startTime, out endTime);
@@ -474,12 +484,6 @@ namespace XiaoPuZhangGui.Forms
             {
                 DateTime startDate = _startDatePicker.Value.Date;
                 DateTime endDate = _endDatePicker.Value.Date;
-                if (endDate < startDate)
-                {
-                    DateTime temp = startDate;
-                    startDate = endDate;
-                    endDate = temp;
-                }
 
                 startTime = startDate;
                 endTime = endDate.AddDays(1);
@@ -491,6 +495,23 @@ namespace XiaoPuZhangGui.Forms
             }
 
             _rangeLabel.Text = "统计范围：" + startTime.ToString("yyyy-MM-dd") + " 至 " + endTime.AddDays(-1).ToString("yyyy-MM-dd");
+        }
+
+        private bool ValidateCustomRange()
+        {
+            string mode = _modeComboBox.SelectedItem == null ? "今日" : _modeComboBox.SelectedItem.ToString();
+            if (mode != "自定义日期范围")
+            {
+                return true;
+            }
+
+            if (_endDatePicker.Value.Date >= _startDatePicker.Value.Date)
+            {
+                return true;
+            }
+
+            MessageBox.Show("结束日期不能早于开始日期，请重新选择日期范围。", "日期范围", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
         }
 
         private void BindReport(
@@ -664,7 +685,8 @@ namespace XiaoPuZhangGui.Forms
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 RowHeadersVisible = false,
                 BackgroundColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle
+                BorderStyle = BorderStyle.FixedSingle,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells
             };
             GridStyleHelper.ApplyStandardStyle(grid);
             return grid;

@@ -17,6 +17,7 @@ namespace XiaoPuZhangGui.Forms
         private readonly ComboBox _statusComboBox;
         private readonly DataGridView _grid;
         private readonly BindingSource _bindingSource;
+        private readonly Label _emptyLabel;
 
         public ProductManagementPage()
         {
@@ -50,9 +51,9 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 72,
+                Height = 116,
                 FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = false,
+                WrapContents = true,
                 BackColor = BackColor
             };
 
@@ -120,10 +121,12 @@ namespace XiaoPuZhangGui.Forms
             _grid.CellContentClick += Grid_CellContentClick;
             _grid.CellDoubleClick += Grid_CellDoubleClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
+            _emptyLabel = UiStyleHelper.CreateEmptyLabel("暂无商品，请先新增商品。");
 
             BuildColumns();
 
             contentPanel.Controls.Add(_grid);
+            contentPanel.Controls.Add(_emptyLabel);
             contentPanel.Controls.Add(filters);
             Controls.Add(contentPanel);
             Controls.Add(titleLabel);
@@ -186,6 +189,7 @@ namespace XiaoPuZhangGui.Forms
             string status = _statusComboBox.SelectedItem == null ? "全部" : _statusComboBox.SelectedItem.ToString();
             IList<Product> products = _productService.Search(_searchTextBox.Text, categoryId, status);
             _bindingSource.DataSource = products;
+            _emptyLabel.Visible = products.Count == 0;
         }
 
         private void AddButton_Click(object sender, EventArgs e)
@@ -221,7 +225,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void Grid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0)
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)
             {
                 return;
             }

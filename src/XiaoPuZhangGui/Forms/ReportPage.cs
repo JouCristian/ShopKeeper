@@ -11,6 +11,7 @@ namespace XiaoPuZhangGui.Forms
     internal sealed class ReportPage : UserControl
     {
         private readonly ReportService _reportService;
+        private readonly ExcelExportService _exportService;
         private readonly BindingSource _salesRankBindingSource;
         private readonly BindingSource _profitRankBindingSource;
         private readonly BindingSource _lowStockBindingSource;
@@ -51,6 +52,7 @@ namespace XiaoPuZhangGui.Forms
         public ReportPage()
         {
             _reportService = new ReportService();
+            _exportService = new ExcelExportService(_reportService);
             _salesRankBindingSource = new BindingSource();
             _profitRankBindingSource = new BindingSource();
             _lowStockBindingSource = new BindingSource();
@@ -97,14 +99,24 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 78,
+                Height = 122,
                 BackColor = Color.White,
                 Padding = new Padding(14, 12, 14, 12)
             };
 
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
-                Dock = DockStyle.Fill,
+                Dock = DockStyle.Top,
+                Height = 48,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.White
+            };
+
+            FlowLayoutPanel exportButtons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Bottom,
+                Height = 48,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 BackColor = Color.White
@@ -155,6 +167,29 @@ namespace XiaoPuZhangGui.Forms
             filters.Controls.Add(queryButton);
             filters.Controls.Add(_rangeLabel);
 
+            Button exportReportButton = CreateExportButton("导出当前报表", Color.FromArgb(0, 123, 255), 128);
+            exportReportButton.Click += ExportReportButton_Click;
+
+            Button exportInventoryButton = CreateExportButton("导出库存清单", Color.FromArgb(40, 167, 69), 128);
+            exportInventoryButton.Click += ExportInventoryButton_Click;
+
+            Button exportCreditButton = CreateExportButton("导出赊账清单", Color.FromArgb(255, 193, 7), 128);
+            exportCreditButton.ForeColor = Color.FromArgb(33, 37, 41);
+            exportCreditButton.Click += ExportCreditButton_Click;
+
+            Button exportExpiringButton = CreateExportButton("导出临期清单", Color.FromArgb(23, 162, 184), 128);
+            exportExpiringButton.Click += ExportExpiringButton_Click;
+
+            Button openFolderButton = CreateExportButton("打开导出目录", Color.FromArgb(108, 117, 125), 128);
+            openFolderButton.Click += OpenFolderButton_Click;
+
+            exportButtons.Controls.Add(exportReportButton);
+            exportButtons.Controls.Add(exportInventoryButton);
+            exportButtons.Controls.Add(exportCreditButton);
+            exportButtons.Controls.Add(exportExpiringButton);
+            exportButtons.Controls.Add(openFolderButton);
+
+            panel.Controls.Add(exportButtons);
             panel.Controls.Add(filters);
             return panel;
         }
@@ -338,6 +373,80 @@ namespace XiaoPuZhangGui.Forms
             {
                 MessageBox.Show("读取经营报表失败：" + ex.Message, "经营报表", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+        }
+
+        private void ExportReportButton_Click(object sender, EventArgs e)
+        {
+            DateTime startTime;
+            DateTime endTime;
+            ResolveRange(out startTime, out endTime);
+            string reportName = ResolveReportExportName();
+            ExportWithMessage(delegate { return _exportService.ExportReport(reportName, startTime, endTime); });
+        }
+
+        private void ExportInventoryButton_Click(object sender, EventArgs e)
+        {
+            ExportWithMessage(delegate { return _exportService.ExportInventoryList(); });
+        }
+
+        private void ExportCreditButton_Click(object sender, EventArgs e)
+        {
+            ExportWithMessage(delegate { return _exportService.ExportCreditList(); });
+        }
+
+        private void ExportExpiringButton_Click(object sender, EventArgs e)
+        {
+            ExportWithMessage(delegate { return _exportService.ExportExpiringList(); });
+        }
+
+        private void OpenFolderButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _exportService.OpenExportDirectory();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开导出目录失败：" + ex.Message, "导出目录", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void ExportWithMessage(Func<string> exportAction)
+        {
+            try
+            {
+                string path = exportAction();
+                DialogResult result = MessageBox.Show(
+                    "导出成功，文件已保存到：\r\n" + path + "\r\n\r\n是否打开导出目录？",
+                    "导出成功",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (result == DialogResult.Yes)
+                {
+                    _exportService.OpenExportDirectory();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("导出失败：" + ex.Message, "导出失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private string ResolveReportExportName()
+        {
+            string mode = _modeComboBox.SelectedItem == null ? "今日" : _modeComboBox.SelectedItem.ToString();
+            if (mode == "本月" || mode == "上月")
+            {
+                return "月报";
+            }
+
+            if (mode == "自定义日期范围")
+            {
+                return "经营报表";
+            }
+
+            return "日报";
         }
 
         private void ResolveRange(out DateTime startTime, out DateTime endTime)
@@ -587,6 +696,23 @@ namespace XiaoPuZhangGui.Forms
                 Enabled = false,
                 Margin = new Padding(0, 8, 14, 0)
             };
+        }
+
+        private static Button CreateExportButton(string text, Color color, int width)
+        {
+            Button button = new Button
+            {
+                Text = text,
+                Width = width,
+                Height = 36,
+                Margin = new Padding(0, 7, 10, 0),
+                BackColor = color,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+            };
+            button.FlatAppearance.BorderSize = 0;
+            return button;
         }
 
         private static Label CreateFilterLabel(string text, int width)

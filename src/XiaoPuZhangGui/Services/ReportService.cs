@@ -54,6 +54,21 @@ namespace XiaoPuZhangGui.Services
             return _reportRepository.GetExpiringProducts(DateTime.Today, DefaultExpiringDays, DefaultExpiringLimit);
         }
 
+        public IList<ExpiringProductReportItem> GetExpiringProductsForExport()
+        {
+            return _reportRepository.GetExpiringProducts(DateTime.Today, DefaultExpiringDays, 10000);
+        }
+
+        public IList<Product> GetInventoryItemsForExport()
+        {
+            return _reportRepository.GetInventoryItems();
+        }
+
+        public IList<CreditRecord> GetOutstandingCreditRecordsForExport()
+        {
+            return _reportRepository.GetOutstandingCreditRecords();
+        }
+
         public IList<ScrapSummaryItem> GetScrapSummary(DateTime startTime, DateTime endTime)
         {
             NormalizeRange(ref startTime, ref endTime);

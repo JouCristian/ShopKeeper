@@ -229,6 +229,65 @@ LIMIT @limit;";
             return items;
         }
 
+        public IList<Product> GetInventoryItems()
+        {
+            List<Product> items = new List<Product>();
+
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                connection.Open();
+                command.CommandText = @"
+SELECT p.id, p.name, p.category_id, IFNULL(c.name, '') AS category_name,
+       p.barcode, p.specification, p.default_price, p.current_stock,
+       p.average_cost, p.min_stock_alert, p.requires_expiry, p.expiry_date,
+       p.status, p.remark, p.created_at, p.updated_at
+FROM products p
+LEFT JOIN categories c ON c.id = p.category_id
+ORDER BY p.status ASC, p.name ASC, p.id ASC;";
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        items.Add(ReadProduct(reader));
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        public IList<CreditRecord> GetOutstandingCreditRecords()
+        {
+            List<CreditRecord> records = new List<CreditRecord>();
+
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                connection.Open();
+                command.CommandText = @"
+SELECT c.id, c.credit_no, c.sales_order_id, IFNULL(o.order_no, '') AS order_no,
+       c.debtor_name, c.original_amount, c.paid_amount, c.remaining_amount,
+       c.status, c.credit_date, c.settled_at, c.remark, c.created_at, c.updated_at
+FROM credit_records c
+LEFT JOIN sales_orders o ON o.id = c.sales_order_id
+WHERE IFNULL(c.status, '') <> 'Settled'
+  AND c.remaining_amount > 0
+ORDER BY date(IFNULL(NULLIF(c.credit_date, ''), c.created_at)) DESC, c.id DESC;";
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        records.Add(ReadCreditRecord(reader));
+                    }
+                }
+            }
+
+            return records;
+        }
+
         public IList<ScrapSummaryItem> GetScrapSummary(DateTime startTime, DateTime endTime, int limit)
         {
             List<ScrapSummaryItem> items = new List<ScrapSummaryItem>();
@@ -328,6 +387,61 @@ WHERE datetime(IFNULL(NULLIF(sale_time, ''), sold_at)) >= datetime(@start_time)
 
             DateTime result;
             return DateTime.TryParse(reader.GetString(index), out result) ? result : DateTime.Today;
+        }
+
+        private static Product ReadProduct(SQLiteDataReader reader)
+        {
+            return new Product
+            {
+                Id = reader.GetInt64(0),
+                Name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                CategoryId = reader.IsDBNull(2) ? 0 : reader.GetInt64(2),
+                CategoryName = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                Barcode = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                Specification = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+                DefaultPrice = Convert.ToDecimal(reader.GetValue(6)),
+                CurrentStock = Convert.ToDecimal(reader.GetValue(7)),
+                AverageCost = Convert.ToDecimal(reader.GetValue(8)),
+                MinStockAlert = Convert.ToDecimal(reader.GetValue(9)),
+                RequiresExpiry = !reader.IsDBNull(10) && Convert.ToInt32(reader.GetValue(10)) == 1,
+                ExpiryDate = reader.IsDBNull(11) ? (DateTime?)null : DateTime.Parse(reader.GetString(11)),
+                Status = reader.IsDBNull(12) ? string.Empty : reader.GetString(12),
+                Remark = reader.IsDBNull(13) ? string.Empty : reader.GetString(13),
+                CreatedAt = ParseDateTime(reader, 14),
+                UpdatedAt = reader.IsDBNull(15) ? (DateTime?)null : DateTime.Parse(reader.GetString(15))
+            };
+        }
+
+        private static CreditRecord ReadCreditRecord(SQLiteDataReader reader)
+        {
+            return new CreditRecord
+            {
+                Id = reader.GetInt64(0),
+                CreditNo = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                SalesOrderId = reader.GetInt64(2),
+                SalesOrderNo = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                DebtorName = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                OriginalAmount = Convert.ToDecimal(reader.GetValue(5)),
+                PaidAmount = Convert.ToDecimal(reader.GetValue(6)),
+                RemainingAmount = Convert.ToDecimal(reader.GetValue(7)),
+                Status = reader.IsDBNull(8) ? "Unpaid" : reader.GetString(8),
+                CreditDate = ParseDateTime(reader, 9),
+                SettledAt = reader.IsDBNull(10) ? (DateTime?)null : DateTime.Parse(reader.GetString(10)),
+                Remark = reader.IsDBNull(11) ? string.Empty : reader.GetString(11),
+                CreatedAt = ParseDateTime(reader, 12),
+                UpdatedAt = reader.IsDBNull(13) ? (DateTime?)null : DateTime.Parse(reader.GetString(13))
+            };
+        }
+
+        private static DateTime ParseDateTime(SQLiteDataReader reader, int index)
+        {
+            if (reader.IsDBNull(index))
+            {
+                return DateTime.Now;
+            }
+
+            DateTime result;
+            return DateTime.TryParse(reader.GetString(index), out result) ? result : DateTime.Now;
         }
     }
 }

@@ -29,6 +29,7 @@ namespace XiaoPuZhangGui.Forms
             Size = new Size(1240, 760);
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
             BackColor = Color.White;
+            ApplyApplicationIcon();
 
             _navigationButtons = new Dictionary<string, Button>();
 
@@ -62,6 +63,23 @@ namespace XiaoPuZhangGui.Forms
 
             BuildNavigation();
             ShowPage(HomeDashboardTitle);
+        }
+
+
+        private void ApplyApplicationIcon()
+        {
+            try
+            {
+                Icon associatedIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                if (associatedIcon != null)
+                {
+                    Icon = associatedIcon;
+                }
+            }
+            catch
+            {
+                // 图标加载失败不影响程序启动。
+            }
         }
 
         private void BuildNavigation()

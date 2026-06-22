@@ -700,9 +700,11 @@ namespace XiaoPuZhangGui.Forms
                 Height = 34,
                 Text = text,
                 TextAlign = ContentAlignment.MiddleLeft,
+                Image = UiAssetHelper.GetIcon("empty_box", 22),
+                ImageAlign = ContentAlignment.MiddleLeft,
                 ForeColor = Color.FromArgb(108, 117, 125),
                 BackColor = Color.White,
-                Padding = new Padding(10, 0, 0, 0),
+                Padding = new Padding(40, 0, 0, 0),
                 Visible = false
             };
         }
@@ -734,6 +736,12 @@ namespace XiaoPuZhangGui.Forms
                 Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
             };
             button.FlatAppearance.BorderSize = 0;
+            if (text.Contains("导出"))
+            {
+                UiAssetHelper.ApplyIcon(button, "export_excel", 18, Color.White);
+                button.Padding = new Padding(8, 0, 0, 0);
+            }
+
             return button;
         }
 

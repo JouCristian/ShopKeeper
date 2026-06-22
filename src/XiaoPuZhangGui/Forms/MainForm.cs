@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -67,14 +68,14 @@ namespace XiaoPuZhangGui.Forms
         {
             AddBrand();
 
-            AddNavigationButton(HomeDashboardTitle, "今日销售、利润、低库存和临期提醒。");
-            AddNavigationButton(SalesManagementTitle, "多商品开单、应收、成本、毛利润和库存扣减。");
-            AddNavigationButton(ProductManagementTitle, "商品档案、分类、售价、库存预警和保质期设置入口。");
-            AddNavigationButton(PurchaseManagementTitle, "采购入库、批次、进价和到期日期登记入口。");
-            AddNavigationButton(InventoryCheckTitle, "库存修正、盈亏原因和报废处理入口。");
-            AddNavigationButton(CreditManagementTitle, "欠款查询、还款登记和备注管理入口。");
-            AddNavigationButton(ReportTitle, "日报、月报、商品排行、库存提醒和报废摘要。");
-            AddNavigationButton(SettingsTitle, "店铺信息、数据库路径、备份路径和恢复相关设置入口。");
+            AddNavigationButton(HomeDashboardTitle, "今日销售、利润、低库存和临期提醒。", "home");
+            AddNavigationButton(SalesManagementTitle, "多商品开单、应收、成本、毛利润和库存扣减。", "sales");
+            AddNavigationButton(ProductManagementTitle, "商品档案、分类、售价、库存预警和保质期设置入口。", "product");
+            AddNavigationButton(PurchaseManagementTitle, "采购入库、批次、进价和到期日期登记入口。", "purchase");
+            AddNavigationButton(InventoryCheckTitle, "库存修正、盈亏原因和报废处理入口。", "inventory");
+            AddNavigationButton(CreditManagementTitle, "欠款查询、还款登记和备注管理入口。", "credit");
+            AddNavigationButton(ReportTitle, "日报、月报、商品排行、库存提醒和报废摘要。", "report");
+            AddNavigationButton(SettingsTitle, "店铺信息、数据库路径、备份路径和恢复相关设置入口。", "settings");
         }
 
         private void AddBrand()
@@ -92,7 +93,7 @@ namespace XiaoPuZhangGui.Forms
             _navigationPanel.Controls.Add(brand);
         }
 
-        private void AddNavigationButton(string title, string description)
+        private void AddNavigationButton(string title, string description, string iconName)
         {
             Button button = new Button
             {
@@ -101,7 +102,7 @@ namespace XiaoPuZhangGui.Forms
                 Text = title,
                 Tag = description,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(22, 0, 0, 0),
+                Padding = new Padding(16, 0, 0, 0),
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
                 ForeColor = Color.White,
@@ -110,6 +111,7 @@ namespace XiaoPuZhangGui.Forms
             };
 
             button.FlatAppearance.BorderSize = 0;
+            UiAssetHelper.ApplyIcon(button, iconName, 22, Color.FromArgb(221, 235, 255));
             button.Click += delegate { ShowPage(title); };
 
             _navigationButtons.Add(title, button);

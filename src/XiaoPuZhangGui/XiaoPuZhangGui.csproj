@@ -116,11 +116,24 @@
     <Compile Include="Utils\GridStyleHelper.cs" />
     <Compile Include="Utils\HashHelper.cs" />
     <Compile Include="Utils\RecoveryKeyGenerator.cs" />
+    <Compile Include="Utils\UiAssetHelper.cs" />
+    <Compile Include="Utils\UiStatusStyleHelper.cs" />
     <Compile Include="Utils\UiStyleHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Assets\icons\svg\*.svg" />
+    <None Include="Assets\illustrations\svg\*.svg" />
     <Content Include="Database\schema.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\README.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\icons\png\*.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\illustrations\png\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

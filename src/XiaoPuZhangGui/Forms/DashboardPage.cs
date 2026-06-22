@@ -72,21 +72,39 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 88,
+                Height = 104,
                 BackColor = Color.White,
-                Padding = new Padding(28, 12, 24, 10)
+                Padding = new Padding(28, 12, 24, 12)
+            };
+
+            TableLayoutPanel headerLayout = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,
+                RowCount = 1,
+                BackColor = Color.White
+            };
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 122F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 198F));
+            headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            Panel textPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
             };
 
             Button refreshButton = new Button
             {
-                Dock = DockStyle.Right,
-                Width = 108,
+                Dock = DockStyle.Fill,
                 Text = "刷新",
                 BackColor = Color.FromArgb(0, 123, 255),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
-                Cursor = Cursors.Hand
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0, 16, 14, 16)
             };
             refreshButton.FlatAppearance.BorderSize = 0;
             refreshButton.Click += delegate { LoadDashboard(); };
@@ -112,9 +130,21 @@ namespace XiaoPuZhangGui.Forms
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            panel.Controls.Add(_subtitleLabel);
-            panel.Controls.Add(_titleLabel);
-            panel.Controls.Add(refreshButton);
+            PictureBox heroBox = new PictureBox
+            {
+                Dock = DockStyle.Fill,
+                Image = UiAssetHelper.GetIllustration("shop_hero", new Size(480, 200)),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.White,
+                Margin = new Padding(8, 0, 0, 0)
+            };
+
+            textPanel.Controls.Add(_subtitleLabel);
+            textPanel.Controls.Add(_titleLabel);
+            headerLayout.Controls.Add(textPanel, 0, 0);
+            headerLayout.Controls.Add(refreshButton, 1, 0);
+            headerLayout.Controls.Add(heroBox, 2, 0);
+            panel.Controls.Add(headerLayout);
             return panel;
         }
 
@@ -367,6 +397,12 @@ namespace XiaoPuZhangGui.Forms
 
             panel.Controls.Add(valueLabel);
             panel.Controls.Add(titleLabel);
+            panel.Controls.Add(new Panel
+            {
+                Dock = DockStyle.Left,
+                Width = 4,
+                BackColor = ResolveMetricAccent(title)
+            });
             return panel;
         }
 
@@ -398,6 +434,13 @@ namespace XiaoPuZhangGui.Forms
                 Cursor = Cursors.Hand
             };
             button.FlatAppearance.BorderColor = Color.FromArgb(206, 212, 218);
+            string iconName = ResolveQuickActionIconName(title);
+            if (!string.IsNullOrEmpty(iconName))
+            {
+                UiAssetHelper.ApplyIcon(button, iconName, 18, Color.FromArgb(0, 123, 255));
+                button.Padding = new Padding(8, 0, 0, 0);
+            }
+
             button.Click += delegate
             {
                 if (_navigateAction != null)
@@ -406,6 +449,41 @@ namespace XiaoPuZhangGui.Forms
                 }
             };
             return button;
+        }
+
+        private static string ResolveQuickActionIconName(string title)
+        {
+            if (title.Contains("销售"))
+            {
+                return "sales";
+            }
+
+            if (title.Contains("商品"))
+            {
+                return "product";
+            }
+
+            if (title.Contains("进货"))
+            {
+                return "purchase";
+            }
+
+            if (title.Contains("库存"))
+            {
+                return "inventory";
+            }
+
+            if (title.Contains("赊账"))
+            {
+                return "credit";
+            }
+
+            if (title.Contains("报表"))
+            {
+                return "report";
+            }
+
+            return string.Empty;
         }
 
         private Panel CreateSection(string title, DataGridView grid, Label emptyLabel)
@@ -448,13 +526,31 @@ namespace XiaoPuZhangGui.Forms
             return new Label
             {
                 Dock = DockStyle.Bottom,
-                Height = 30,
+                Height = 36,
                 Text = text,
                 Visible = false,
                 Font = new Font("Microsoft YaHei UI", 10F),
                 ForeColor = Color.FromArgb(108, 117, 125),
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                Image = UiAssetHelper.GetIcon("empty_box", 22),
+                ImageAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(40, 0, 0, 0)
             };
+        }
+
+        private static Color ResolveMetricAccent(string title)
+        {
+            if (title.Contains("实收") || title.Contains("毛利润") || title.Contains("净利润"))
+            {
+                return Color.FromArgb(0, 123, 255);
+            }
+
+            if (title.Contains("赊账") || title.Contains("报废"))
+            {
+                return Color.FromArgb(255, 193, 7);
+            }
+
+            return Color.FromArgb(206, 212, 218);
         }
 
         private DataGridView CreateGrid()
@@ -545,7 +641,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void UpdateSummary(ReportSummary summary, DateTime today)
         {
-            _subtitleLabel.Text = "今日经营概览 " + today.ToString("yyyy-MM-dd");
+            _subtitleLabel.Text = "今日经营概览 " + today.ToString("yyyy-MM-dd") + " · 本地离线运行";
             _salesReceivableLabel.Text = FormatMoney(summary.SalesReceivable);
             _salesPaidLabel.Text = FormatMoney(summary.SalesPaid);
             _newCreditLabel.Text = FormatMoney(summary.NewCredit);

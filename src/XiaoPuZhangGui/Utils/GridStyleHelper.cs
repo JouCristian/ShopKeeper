@@ -28,6 +28,8 @@ namespace XiaoPuZhangGui.Utils
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 251, 252);
             grid.RowTemplate.Height = 36;
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
+            grid.CellFormatting -= UiStatusStyleHelper.ApplyStatusCellStyle;
+            grid.CellFormatting += UiStatusStyleHelper.ApplyStatusCellStyle;
         }
 
         public static void FillLastColumn(DataGridView grid)

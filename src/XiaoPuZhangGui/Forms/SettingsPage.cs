@@ -382,6 +382,13 @@ namespace XiaoPuZhangGui.Forms
                 Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
             };
             button.FlatAppearance.BorderSize = 0;
+            if (text.Contains("备份"))
+            {
+                Color iconColor = text.Contains("恢复") ? Color.FromArgb(33, 37, 41) : Color.White;
+                UiAssetHelper.ApplyIcon(button, "backup", 18, iconColor);
+                button.Padding = new Padding(8, 0, 0, 0);
+            }
+
             return button;
         }
     }

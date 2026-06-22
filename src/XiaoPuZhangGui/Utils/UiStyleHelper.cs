@@ -34,9 +34,11 @@ namespace XiaoPuZhangGui.Utils
                 Height = 36,
                 Text = text,
                 TextAlign = ContentAlignment.MiddleLeft,
+                Image = UiAssetHelper.GetIcon("empty_box", 22),
+                ImageAlign = ContentAlignment.MiddleLeft,
                 ForeColor = MutedText,
                 BackColor = Color.White,
-                Padding = new Padding(12, 0, 0, 0),
+                Padding = new Padding(42, 0, 0, 0),
                 Visible = false
             };
         }

@@ -14,9 +14,13 @@ namespace XiaoPuZhangGui
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            bool startupCompleted = false;
             try
             {
                 StartupService.Initialize();
+                startupCompleted = true;
+                StartupService.TryRunStartupBackup();
+
                 AppConfig config = AppConfigService.LoadOrCreateDefault();
 
                 if (!config.IsInitialized)
@@ -50,6 +54,13 @@ namespace XiaoPuZhangGui
                     "小铺掌柜",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (startupCompleted)
+                {
+                    StartupService.TryRunExitBackup();
+                }
             }
         }
     }

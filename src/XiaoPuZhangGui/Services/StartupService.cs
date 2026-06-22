@@ -17,5 +17,27 @@ namespace XiaoPuZhangGui.Services
 
             DatabaseService.Initialize(config.DatabasePath);
         }
+
+        public static void TryRunStartupBackup()
+        {
+            try
+            {
+                new BackupService().CreateStartupAutomaticBackupIfNeeded();
+            }
+            catch
+            {
+            }
+        }
+
+        public static void TryRunExitBackup()
+        {
+            try
+            {
+                new BackupService().CreateExitAutomaticBackup();
+            }
+            catch
+            {
+            }
+        }
     }
 }

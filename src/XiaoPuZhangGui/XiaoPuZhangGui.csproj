@@ -48,6 +48,7 @@
     <Compile Include="Forms\CreditDetailForm.cs" />
     <Compile Include="Forms\CreditManagementPage.cs" />
     <Compile Include="Forms\CreditPaymentForm.cs" />
+    <Compile Include="Forms\DashboardPage.cs" />
     <Compile Include="Forms\FirstRunForm.cs" />
     <Compile Include="Forms\InventoryCheckDetailForm.cs" />
     <Compile Include="Forms\InventoryCheckEditForm.cs" />

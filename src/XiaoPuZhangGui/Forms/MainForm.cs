@@ -6,6 +6,7 @@ namespace XiaoPuZhangGui.Forms
 {
     internal sealed class MainForm : Form
     {
+        private const string HomeDashboardTitle = "首页看板";
         private const string SalesManagementTitle = "销售记账";
         private const string ProductManagementTitle = "商品管理";
         private const string PurchaseManagementTitle = "进货入库";
@@ -59,14 +60,14 @@ namespace XiaoPuZhangGui.Forms
             _navigationPanel.Controls.Add(_navigationListPanel);
 
             BuildNavigation();
-            ShowPage("首页看板");
+            ShowPage(HomeDashboardTitle);
         }
 
         private void BuildNavigation()
         {
             AddBrand();
 
-            AddNavigationButton("首页看板", "今日销售、利润、低库存和临期提醒。");
+            AddNavigationButton(HomeDashboardTitle, "今日销售、利润、低库存和临期提醒。");
             AddNavigationButton(SalesManagementTitle, "多商品开单、应收、成本、毛利润和库存扣减。");
             AddNavigationButton(ProductManagementTitle, "商品档案、分类、售价、库存预警和保质期设置入口。");
             AddNavigationButton(PurchaseManagementTitle, "采购入库、批次、进价和到期日期登记入口。");
@@ -125,6 +126,12 @@ namespace XiaoPuZhangGui.Forms
             }
 
             _contentPanel.Controls.Clear();
+
+            if (title == HomeDashboardTitle)
+            {
+                _contentPanel.Controls.Add(new DashboardPage(ShowPage));
+                return;
+            }
 
             if (title == SalesManagementTitle)
             {

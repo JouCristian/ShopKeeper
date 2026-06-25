@@ -34,14 +34,24 @@ namespace XiaoPuZhangGui.Services
 
         public IList<ProductSalesRankItem> GetProductSalesRank(DateTime startTime, DateTime endTime)
         {
+            return GetProductSalesRank(startTime, endTime, DefaultRankLimit);
+        }
+
+        public IList<ProductSalesRankItem> GetProductSalesRank(DateTime startTime, DateTime endTime, int limit)
+        {
             NormalizeRange(ref startTime, ref endTime);
-            return _reportRepository.GetProductSalesRank(startTime, endTime, DefaultRankLimit);
+            return _reportRepository.GetProductSalesRank(startTime, endTime, limit);
         }
 
         public IList<ProductProfitRankItem> GetProductProfitRank(DateTime startTime, DateTime endTime)
         {
+            return GetProductProfitRank(startTime, endTime, DefaultRankLimit);
+        }
+
+        public IList<ProductProfitRankItem> GetProductProfitRank(DateTime startTime, DateTime endTime, int limit)
+        {
             NormalizeRange(ref startTime, ref endTime);
-            return _reportRepository.GetProductProfitRank(startTime, endTime, DefaultRankLimit);
+            return _reportRepository.GetProductProfitRank(startTime, endTime, limit);
         }
 
         public IList<LowStockReportItem> GetLowStockItems()
@@ -99,6 +109,16 @@ namespace XiaoPuZhangGui.Services
         public static DateTime GetNextMonthStart(DateTime day)
         {
             return GetMonthStart(day).AddMonths(1);
+        }
+
+        public static DateTime GetYearStart(DateTime day)
+        {
+            return new DateTime(day.Year, 1, 1);
+        }
+
+        public static DateTime GetNextYearStart(DateTime day)
+        {
+            return GetYearStart(day).AddYears(1);
         }
 
         private static void NormalizeRange(ref DateTime startTime, ref DateTime endTime)

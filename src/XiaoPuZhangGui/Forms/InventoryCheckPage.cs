@@ -7,7 +7,7 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class InventoryCheckPage : UserControl
+    internal sealed class InventoryCheckPage : UserControl, IUnsavedChangesAware
     {
         private readonly InventoryCheckService _inventoryCheckService;
         private readonly ScrapService _scrapService;
@@ -68,6 +68,20 @@ namespace XiaoPuZhangGui.Forms
             LoadChecks();
             LoadScrapProducts();
             LoadScrapRecords();
+        }
+
+        public bool HasUnsavedChanges
+        {
+            get
+            {
+                return (_scrapQuantityNumeric != null && _scrapQuantityNumeric.Value > 0)
+                    || (_scrapRemarkTextBox != null && !string.IsNullOrWhiteSpace(_scrapRemarkTextBox.Text));
+            }
+        }
+
+        public string UnsavedChangesDescription
+        {
+            get { return "当前报废登记尚未保存。"; }
         }
 
         private void BuildCheckTab(TabPage tab)

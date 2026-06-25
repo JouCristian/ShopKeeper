@@ -133,7 +133,7 @@ namespace XiaoPuZhangGui.Forms
                 Font = UiTheme.Font(11F),
                 Margin = new Padding(0, 10, 14, 0)
             };
-            _modeComboBox.Items.AddRange(new object[] { "今日", "昨日", "本月", "上月", "自定义日期范围" });
+            _modeComboBox.Items.AddRange(new object[] { "今日", "昨日", "本月", "上月", "本年", "去年", "自定义日期范围" });
             _modeComboBox.SelectedIndexChanged += ModeComboBox_SelectedIndexChanged;
 
             _startDatePicker = CreateDatePicker(DateTime.Today);
@@ -568,6 +568,11 @@ namespace XiaoPuZhangGui.Forms
                 return "月报";
             }
 
+            if (mode == "本年" || mode == "去年")
+            {
+                return "年报";
+            }
+
             if (mode == "自定义日期范围")
             {
                 return "经营报表";
@@ -596,6 +601,17 @@ namespace XiaoPuZhangGui.Forms
                 DateTime lastMonth = today.AddMonths(-1);
                 startTime = ReportService.GetMonthStart(lastMonth);
                 endTime = ReportService.GetNextMonthStart(lastMonth);
+            }
+            else if (mode == "本年")
+            {
+                startTime = ReportService.GetYearStart(today);
+                endTime = ReportService.GetNextYearStart(today);
+            }
+            else if (mode == "去年")
+            {
+                DateTime lastYear = today.AddYears(-1);
+                startTime = ReportService.GetYearStart(lastYear);
+                endTime = ReportService.GetNextYearStart(lastYear);
             }
             else if (mode == "自定义日期范围")
             {
@@ -642,6 +658,11 @@ namespace XiaoPuZhangGui.Forms
             if (mode == "本月" || mode == "上月")
             {
                 return new TrendBucket(TimeSpan.FromDays(1), 0, "自动：一天");
+            }
+
+            if (mode == "本年" || mode == "去年")
+            {
+                return new TrendBucket(TimeSpan.Zero, 1, "自动：一月");
             }
 
             if (mode == "自定义日期范围" && (endTime - startTime).TotalDays > 2D)

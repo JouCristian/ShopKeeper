@@ -12,6 +12,8 @@ namespace XiaoPuZhangGui.Models
 
         public bool HasApiKey { get; set; }
 
+        public string AiApiKey { get; set; }
+
         public string AiApiKeyMasked { get; set; }
 
         public string LastConnectionTestTime { get; set; }

@@ -452,8 +452,8 @@ namespace XiaoPuZhangGui.Forms
             profitRankGrid.Columns.Add(CreateMoneyColumn("GrossProfit", "毛利润", 92));
             _profitRankEmptyLabel = CreateEmptyLabel("暂无毛利排行");
 
-            layout.Controls.Add(CreateSection("今日销量排行 Top 5", salesRankGrid, _salesRankEmptyLabel), 0, 0);
-            layout.Controls.Add(CreateSection("今日毛利润排行 Top 5", profitRankGrid, _profitRankEmptyLabel), 1, 0);
+            layout.Controls.Add(CreateSection("今日全部销量排行", salesRankGrid, _salesRankEmptyLabel), 0, 0);
+            layout.Controls.Add(CreateSection("今日全部毛利润排行", profitRankGrid, _profitRankEmptyLabel), 1, 0);
             tab.Controls.Add(layout);
             return tab;
         }
@@ -799,8 +799,8 @@ namespace XiaoPuZhangGui.Forms
                 DateTime endTime = ReportService.GetNextDayStart(today);
                 ReportSummary summary = _reportService.GetSummary(startTime, endTime);
 
-                IList<ProductSalesRankItem> salesRank = _reportService.GetProductSalesRank(startTime, endTime);
-                IList<ProductProfitRankItem> profitRank = _reportService.GetProductProfitRank(startTime, endTime);
+                IList<ProductSalesRankItem> salesRank = _reportService.GetProductSalesRank(startTime, endTime, 10000);
+                IList<ProductProfitRankItem> profitRank = _reportService.GetProductProfitRank(startTime, endTime, 10000);
                 IList<LowStockReportItem> lowStockItems = _reportService.GetLowStockItems();
                 IList<ExpiringProductReportItem> expiringItems = _reportService.GetExpiringProducts();
                 IList<CreditRecord> creditRecords = _reportService.GetOutstandingCreditRecordsForExport();
@@ -809,8 +809,8 @@ namespace XiaoPuZhangGui.Forms
                 BindLowStock(TakeFirst(lowStockItems, 5));
                 BindExpiring(TakeFirst(expiringItems, 5));
                 BindCredits(TakeFirst(creditRecords, 5), creditRecords.Count, summary.OutstandingCredit);
-                BindSalesRank(TakeFirst(salesRank, 5));
-                BindProfitRank(TakeFirst(profitRank, 5));
+                BindSalesRank(salesRank);
+                BindProfitRank(profitRank);
 
                 _errorLabel.Visible = false;
             }

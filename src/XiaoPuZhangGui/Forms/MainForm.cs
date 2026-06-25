@@ -34,6 +34,7 @@ namespace XiaoPuZhangGui.Forms
         private readonly Label _modeLabel;
         private readonly Dictionary<string, SidebarNavigationButton> _navigationButtons;
         private NetworkStatusResult _networkStatus;
+        private string _currentPageTitle;
 
         public MainForm()
         {
@@ -194,7 +195,14 @@ namespace XiaoPuZhangGui.Forms
 
         private void ShowPage(string title)
         {
+            if (!ConfirmLeaveCurrentPage(title))
+            {
+                SelectNavigationButton(_currentPageTitle, true);
+                return;
+            }
+
             SelectNavigationButton(title, true);
+            _currentPageTitle = title;
 
             _contentPanel.Controls.Clear();
 
@@ -262,6 +270,41 @@ namespace XiaoPuZhangGui.Forms
                 : string.Empty;
 
             ShowContentPage(new PlaceholderPage(title, description));
+        }
+
+        private bool ConfirmLeaveCurrentPage(string targetTitle)
+        {
+            if (string.Equals(_currentPageTitle, targetTitle, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            IUnsavedChangesAware unsavedPage = GetCurrentUnsavedPage();
+            if (unsavedPage == null || !unsavedPage.HasUnsavedChanges)
+            {
+                return true;
+            }
+
+            string description = string.IsNullOrWhiteSpace(unsavedPage.UnsavedChangesDescription)
+                ? "当前页面还有未保存内容。"
+                : unsavedPage.UnsavedChangesDescription;
+            DialogResult result = MessageBox.Show(
+                description + "\r\n\r\n如果现在切换页面，这些未保存内容会被清空。\r\n确定继续切换吗？",
+                "内容尚未保存",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+            return result == DialogResult.Yes;
+        }
+
+        private IUnsavedChangesAware GetCurrentUnsavedPage()
+        {
+            if (_contentPanel == null || _contentPanel.Controls.Count == 0)
+            {
+                return null;
+            }
+
+            return _contentPanel.Controls[0] as IUnsavedChangesAware;
         }
 
         private async System.Threading.Tasks.Task RefreshNetworkStatusAsync()
@@ -415,6 +458,13 @@ namespace XiaoPuZhangGui.Forms
                 e.Graphics.FillEllipse(brush, new Rectangle(0, 0, Width - 1, Height - 1));
             }
         }
+    }
+
+    internal interface IUnsavedChangesAware
+    {
+        bool HasUnsavedChanges { get; }
+
+        string UnsavedChangesDescription { get; }
     }
 
     internal sealed class SidebarNavigationButton : Button

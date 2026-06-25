@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -75,6 +76,7 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(320, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
+            UiComponentHelper.CenterTextBoxContent(_remarkTextBox);
             Controls.Add(_remarkTextBox);
 
             Button saveButton = new Button

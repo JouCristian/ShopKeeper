@@ -59,6 +59,7 @@ namespace XiaoPuZhangGui.Forms
             };
 
             _storeNameTextBox = CreateTextBox(160);
+            UiComponentHelper.CenterTextBoxContent(_storeNameTextBox);
             _storeNameTextBox.Text = config.StoreName;
 
             _pinTextBox = CreatePinTextBox(228);

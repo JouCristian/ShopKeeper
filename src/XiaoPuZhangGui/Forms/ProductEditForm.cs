@@ -272,6 +272,7 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(280, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
+            UiComponentHelper.CenterTextBoxContent(textBox);
             Controls.Add(textBox);
             return textBox;
         }

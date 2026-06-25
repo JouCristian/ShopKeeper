@@ -141,11 +141,12 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(190, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
+            UiComponentHelper.CenterTextBoxContent(_productSearchTextBox);
             _productSearchTextBox.KeyDown += ProductSearchTextBox_KeyDown;
 
             _productComboBox = new ComboBox
             {
-                Location = new Point(454, 16),
+                Location = new Point(468, 16),
                 Size = new Size(250, 30),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = new Font("Microsoft YaHei UI", 11F)
@@ -171,7 +172,7 @@ namespace XiaoPuZhangGui.Forms
             inputPanel.Controls.Add(CreateLabel("商品搜索", 14, 16, 72));
             inputPanel.Controls.Add(_productSearchTextBox);
             inputPanel.Controls.Add(searchButton);
-            inputPanel.Controls.Add(CreateLabel("选择商品", 384, 16, 64));
+            inputPanel.Controls.Add(CreateLabel("选择商品", 384, 16, 78));
             inputPanel.Controls.Add(_productComboBox);
             inputPanel.Controls.Add(CreateLabel("数量", 14, 69, 64));
             inputPanel.Controls.Add(_quantityNumeric);
@@ -213,6 +214,7 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(300, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
+            UiComponentHelper.CenterTextBoxContent(_remarkTextBox);
 
             _paidAmountNumeric = new NumericUpDown
             {
@@ -233,6 +235,7 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(170, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
+            UiComponentHelper.CenterTextBoxContent(_debtorNameTextBox);
 
             _creditAmountLabel = new Label
             {

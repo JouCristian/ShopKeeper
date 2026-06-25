@@ -130,6 +130,7 @@ namespace XiaoPuZhangGui.Forms
             };
 
             _scrapSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(180, 30), Font = new Font("Microsoft YaHei UI", 11F) };
+            UiComponentHelper.CenterTextBoxContent(_scrapSearchTextBox);
             _scrapSearchTextBox.KeyDown += ScrapSearchTextBox_KeyDown;
             Button searchButton = CreateButton("查找", UiTheme.PrimaryBlue, 80);
             searchButton.Location = new Point(274, 15);
@@ -169,6 +170,7 @@ namespace XiaoPuZhangGui.Forms
             _scrapReasonComboBox.SelectedIndex = 0;
 
             _scrapRemarkTextBox = new TextBox { Location = new Point(454, 76), Size = new Size(180, 30), Font = new Font("Microsoft YaHei UI", 11F) };
+            UiComponentHelper.CenterTextBoxContent(_scrapRemarkTextBox);
             Button saveButton = CreateButton("保存报废", UiTheme.DangerRed, 110);
             saveButton.Location = new Point(654, 72);
             saveButton.Margin = Padding.Empty;

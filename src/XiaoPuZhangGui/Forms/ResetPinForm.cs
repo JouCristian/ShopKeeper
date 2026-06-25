@@ -33,6 +33,7 @@ namespace XiaoPuZhangGui.Forms
             };
 
             _recoveryKeyTextBox = CreateTextBox(120);
+            UiComponentHelper.CenterTextBoxContent(_recoveryKeyTextBox);
             _newPinTextBox = CreatePinTextBox(190);
             _confirmPinTextBox = CreatePinTextBox(250);
 

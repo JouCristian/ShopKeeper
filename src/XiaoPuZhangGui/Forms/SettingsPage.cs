@@ -64,6 +64,7 @@ namespace XiaoPuZhangGui.Forms
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             _storeNameTextBox = new TextBox { Dock = DockStyle.Fill, Font = UiTheme.Font(12F) };
+            UiComponentHelper.CenterTextBoxContent(_storeNameTextBox);
             _databasePathLabel = CreateValueLabel();
             _configPathLabel = CreateValueLabel();
             _backupPathLabel = CreateValueLabel();

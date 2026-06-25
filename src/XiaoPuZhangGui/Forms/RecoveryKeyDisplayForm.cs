@@ -58,6 +58,7 @@ namespace XiaoPuZhangGui.Forms
                 Font = new Font("Consolas", 16F, FontStyle.Bold),
                 TextAlign = HorizontalAlignment.Center
             };
+            UiComponentHelper.CenterTextBoxContent(keyTextBox);
 
             Button copyButton = UiComponentHelper.CreateSecondaryButton("复制密钥", 118);
             copyButton.Location = new Point(260, 218);

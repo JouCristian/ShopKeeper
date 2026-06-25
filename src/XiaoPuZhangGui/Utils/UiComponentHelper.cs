@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace XiaoPuZhangGui.Utils
@@ -280,9 +281,60 @@ namespace XiaoPuZhangGui.Utils
             if (textBox != null)
             {
                 textBox.AutoSize = false;
+                CenterTextBoxContent(textBox);
             }
 
             control.Height = UiTheme.InputHeight;
+        }
+
+        public static void CenterTextBoxContent(TextBox textBox)
+        {
+            if (textBox == null || textBox.Multiline || textBox.PasswordChar != '\0' || textBox.UseSystemPasswordChar)
+            {
+                return;
+            }
+
+            textBox.AutoSize = false;
+            textBox.Multiline = true;
+            textBox.AcceptsReturn = false;
+            textBox.WordWrap = false;
+            textBox.ScrollBars = ScrollBars.None;
+            textBox.BorderStyle = BorderStyle.Fixed3D;
+
+            EventHandler updateEditRect = delegate { ApplyCenteredEditRectangle(textBox); };
+            textBox.HandleCreated += updateEditRect;
+            textBox.Resize += updateEditRect;
+            textBox.FontChanged += updateEditRect;
+            textBox.KeyPress += SuppressSingleLineTextBoxReturn;
+            ApplyCenteredEditRectangle(textBox);
+        }
+
+        private static void SuppressSingleLineTextBoxReturn(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == '\r' || e.KeyChar == '\n')
+            {
+                e.Handled = true;
+            }
+        }
+
+        private static void ApplyCenteredEditRectangle(TextBox textBox)
+        {
+            if (textBox == null || !textBox.IsHandleCreated)
+            {
+                return;
+            }
+
+            int textHeight = TextRenderer.MeasureText("田", textBox.Font).Height;
+            int top = Math.Max(1, (textBox.ClientSize.Height - textHeight) / 2);
+            RECT rect = new RECT
+            {
+                Left = 4,
+                Top = top,
+                Right = Math.Max(4, textBox.ClientSize.Width - 4),
+                Bottom = Math.Min(textBox.ClientSize.Height - 1, top + textHeight + 2)
+            };
+
+            SendMessage(textBox.Handle, EM_SETRECTNP, IntPtr.Zero, ref rect);
         }
 
         private static bool ContainsInputControl(Control root)
@@ -301,6 +353,20 @@ namespace XiaoPuZhangGui.Utils
         private static int CenterOffset(int controlHeight)
         {
             return Math.Max(0, (UiTheme.ButtonHeight - controlHeight) / 2);
+        }
+
+        private const int EM_SETRECTNP = 0x00B4;
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, ref RECT lParam);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
         }
 
         public static Panel CreatePageHeader(string title, string subtitle, Control action, string illustrationName)

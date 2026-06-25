@@ -78,6 +78,7 @@ namespace XiaoPuZhangGui.Forms
                 Location = new Point(365, 76),
                 Size = new Size(560, 30)
             };
+            UiComponentHelper.CenterTextBoxContent(_recordRemarkTextBox);
             Controls.Add(_recordRemarkTextBox);
 
             GroupBox addGroup = new GroupBox
@@ -140,6 +141,7 @@ namespace XiaoPuZhangGui.Forms
                 Location = new Point(560, 118),
                 Size = new Size(180, 30)
             };
+            UiComponentHelper.CenterTextBoxContent(_lineRemarkTextBox);
             addGroup.Controls.Add(_lineRemarkTextBox);
 
             Button addLineButton = new Button
@@ -173,6 +175,7 @@ namespace XiaoPuZhangGui.Forms
             _grid.CellContentClick += Grid_CellContentClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
             BuildGridColumns();
+            ApplyPurchaseGridColumnLayout();
             Controls.Add(_grid);
 
             _totalAmountLabel = new Label
@@ -218,6 +221,45 @@ namespace XiaoPuZhangGui.Forms
                 UseColumnTextForButtonValue = true
             };
             _grid.Columns.Add(deleteColumn);
+        }
+
+        private void ApplyPurchaseGridColumnLayout()
+        {
+            _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            SetFillColumn(0, 150, 1.7F);
+            SetFillColumn(1, 90, 0.9F);
+            SetFillColumn(2, 100, 1F);
+            SetFillColumn(3, 90, 0.9F);
+            SetFillColumn(4, 108, 1.05F);
+            SetFillColumn(5, 108, 1.05F);
+            SetFillColumn(6, 130, 1.3F);
+            SetFixedColumn("DeleteColumn", 78);
+        }
+
+        private void SetFillColumn(int columnIndex, int minimumWidth, float fillWeight)
+        {
+            if (columnIndex < 0 || columnIndex >= _grid.Columns.Count)
+            {
+                return;
+            }
+
+            DataGridViewColumn column = _grid.Columns[columnIndex];
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            column.MinimumWidth = minimumWidth;
+            column.FillWeight = fillWeight;
+        }
+
+        private void SetFixedColumn(string columnName, int width)
+        {
+            if (!_grid.Columns.Contains(columnName))
+            {
+                return;
+            }
+
+            DataGridViewColumn column = _grid.Columns[columnName];
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            column.MinimumWidth = width;
+            column.Width = width;
         }
 
         private void LoadProducts()

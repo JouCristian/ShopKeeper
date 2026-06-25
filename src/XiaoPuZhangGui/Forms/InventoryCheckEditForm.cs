@@ -79,9 +79,12 @@ namespace XiaoPuZhangGui.Forms
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 RowHeadersVisible = false,
                 BackgroundColor = Color.White,
+                AllowUserToResizeColumns = false,
+                ScrollBars = ScrollBars.Vertical,
                 DataSource = _bindingSource
             };
             _grid.CellContentClick += Grid_CellContentClick;
+            _grid.SizeChanged += delegate { ApplyInventoryGridColumnLayout(); };
             GridStyleHelper.ApplyStandardStyle(_grid);
             BuildColumns();
             ApplyInventoryGridColumnLayout();
@@ -94,6 +97,7 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(420, 30),
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
+            UiComponentHelper.CenterTextBoxContent(_remarkTextBox);
             Controls.Add(_remarkTextBox);
 
             _totalLabel = new Label
@@ -114,6 +118,7 @@ namespace XiaoPuZhangGui.Forms
         private void BuildInputPanel(Panel panel)
         {
             _productSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(190, 30), Font = new Font("Microsoft YaHei UI", 11F) };
+            UiComponentHelper.CenterTextBoxContent(_productSearchTextBox);
             _productSearchTextBox.KeyDown += ProductSearchTextBox_KeyDown;
             Button searchButton = CreateButton("查找", UiTheme.PrimaryBlue, 80);
             searchButton.Location = new Point(286, 16);
@@ -142,6 +147,7 @@ namespace XiaoPuZhangGui.Forms
             _reasonComboBox.SelectedIndex = 0;
 
             _lineRemarkTextBox = new TextBox { Location = new Point(470, 74), Size = new Size(170, 30), Font = new Font("Microsoft YaHei UI", 11F) };
+            UiComponentHelper.CenterTextBoxContent(_lineRemarkTextBox);
 
             Button addButton = CreateButton("加入明细", UiTheme.SuccessGreen, 110);
             addButton.Location = new Point(858, 108);
@@ -194,19 +200,27 @@ namespace XiaoPuZhangGui.Forms
         private void ApplyInventoryGridColumnLayout()
         {
             _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-            SetColumnWidth(0, 150);
-            SetColumnWidth(1, 74);
-            SetColumnWidth(2, 92);
-            SetColumnWidth(3, 92);
-            SetColumnWidth(4, 92);
-            SetColumnWidth(5, 82);
-            SetColumnWidth(6, 96);
-            SetColumnWidth(7, 88);
-            SetColumnWidth(8, 116);
-            SetColumnWidth(9, 70);
+            int availableWidth = Math.Max(960, _grid.ClientSize.Width - 2);
+            int[] baseWidths = { 154, 78, 96, 96, 104, 86, 104, 92, 114, 76 };
+            int totalBaseWidth = 0;
+            foreach (int width in baseWidths)
+            {
+                totalBaseWidth += width;
+            }
+
+            int usedWidth = 0;
+            for (int index = 0; index < baseWidths.Length; index++)
+            {
+                int width = index == baseWidths.Length - 1
+                    ? availableWidth - usedWidth
+                    : (int)Math.Floor(baseWidths[index] * availableWidth / (double)totalBaseWidth);
+
+                SetFixedColumn(index, Math.Max(64, width));
+                usedWidth += width;
+            }
         }
 
-        private void SetColumnWidth(int columnIndex, int width)
+        private void SetFixedColumn(int columnIndex, int width)
         {
             if (columnIndex < 0 || columnIndex >= _grid.Columns.Count)
             {
@@ -217,6 +231,7 @@ namespace XiaoPuZhangGui.Forms
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             column.MinimumWidth = width;
             column.Width = width;
+            column.Resizable = DataGridViewTriState.False;
         }
 
         private void ProductSearchTextBox_KeyDown(object sender, KeyEventArgs e)

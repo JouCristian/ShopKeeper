@@ -326,6 +326,27 @@ LIMIT @limit;";
             return items;
         }
 
+        public IList<ProfitTrendPoint> GetProfitTrend(DateTime startTime, DateTime endTime, TimeSpan bucketDuration, int bucketMonths)
+        {
+            List<ProfitTrendPoint> points = bucketMonths > 0
+                ? CreateMonthTrendPoints(startTime, endTime, bucketMonths)
+                : CreateDurationTrendPoints(startTime, endTime, bucketDuration);
+
+            if (points.Count == 0)
+            {
+                return points;
+            }
+
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+                ApplySalesProfitTrend(connection, points, startTime, endTime, bucketDuration, bucketMonths);
+                ApplyScrapLossTrend(connection, points, startTime, endTime, bucketDuration, bucketMonths);
+            }
+
+            return points;
+        }
+
         private static void ReadSalesSummary(SQLiteConnection connection, DateTime startTime, DateTime endTime, ReportSummary summary)
         {
             using (SQLiteCommand command = connection.CreateCommand())
@@ -355,6 +376,149 @@ WHERE datetime(IFNULL(NULLIF(sale_time, ''), sold_at)) >= datetime(@start_time)
                     summary.GrossProfit = Convert.ToDecimal(reader.GetValue(4));
                 }
             }
+        }
+
+        private static List<ProfitTrendPoint> CreateDurationTrendPoints(DateTime startTime, DateTime endTime, TimeSpan bucketDuration)
+        {
+            List<ProfitTrendPoint> points = new List<ProfitTrendPoint>();
+            if (bucketDuration.TotalMinutes <= 0)
+            {
+                bucketDuration = TimeSpan.FromDays(1);
+            }
+
+            DateTime cursor = startTime;
+            while (cursor < endTime)
+            {
+                DateTime next = cursor.Add(bucketDuration);
+                if (next > endTime)
+                {
+                    next = endTime;
+                }
+
+                points.Add(new ProfitTrendPoint
+                {
+                    StartTime = cursor,
+                    EndTime = next,
+                    Label = FormatTrendLabel(cursor, bucketDuration)
+                });
+                cursor = next;
+            }
+
+            return points;
+        }
+
+        private static List<ProfitTrendPoint> CreateMonthTrendPoints(DateTime startTime, DateTime endTime, int bucketMonths)
+        {
+            List<ProfitTrendPoint> points = new List<ProfitTrendPoint>();
+            if (bucketMonths <= 0)
+            {
+                bucketMonths = 1;
+            }
+
+            DateTime cursor = startTime;
+            while (cursor < endTime)
+            {
+                DateTime next = cursor.AddMonths(bucketMonths);
+                if (next > endTime)
+                {
+                    next = endTime;
+                }
+
+                points.Add(new ProfitTrendPoint
+                {
+                    StartTime = cursor,
+                    EndTime = next,
+                    Label = cursor.ToString(bucketMonths >= 12 ? "yyyy" : "yyyy-MM")
+                });
+                cursor = next;
+            }
+
+            return points;
+        }
+
+        private static void ApplySalesProfitTrend(SQLiteConnection connection, IList<ProfitTrendPoint> points, DateTime startTime, DateTime endTime, TimeSpan bucketDuration, int bucketMonths)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT IFNULL(NULLIF(sale_time, ''), sold_at) AS trend_time,
+       IFNULL(gross_profit, 0) AS trend_value
+FROM sales_orders
+WHERE datetime(IFNULL(NULLIF(sale_time, ''), sold_at)) >= datetime(@start_time)
+  AND datetime(IFNULL(NULLIF(sale_time, ''), sold_at)) < datetime(@end_time);";
+                AddRangeParameters(command, startTime, endTime);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        DateTime trendTime = ParseDateTime(reader, 0);
+                        decimal value = Convert.ToDecimal(reader.GetValue(1));
+                        int index = ResolveTrendBucketIndex(trendTime, startTime, bucketDuration, bucketMonths);
+                        if (index >= 0 && index < points.Count)
+                        {
+                            points[index].GrossProfit += value;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static void ApplyScrapLossTrend(SQLiteConnection connection, IList<ProfitTrendPoint> points, DateTime startTime, DateTime endTime, TimeSpan bucketDuration, int bucketMonths)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT scrap_date AS trend_time,
+       IFNULL(loss_amount, 0) AS trend_value
+FROM scrap_records
+WHERE datetime(scrap_date) >= datetime(@start_time)
+  AND datetime(scrap_date) < datetime(@end_time);";
+                AddRangeParameters(command, startTime, endTime);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        DateTime trendTime = ParseDateTime(reader, 0);
+                        decimal value = Convert.ToDecimal(reader.GetValue(1));
+                        int index = ResolveTrendBucketIndex(trendTime, startTime, bucketDuration, bucketMonths);
+                        if (index >= 0 && index < points.Count)
+                        {
+                            points[index].ScrapLoss += value;
+                        }
+                    }
+                }
+            }
+        }
+
+        private static int ResolveTrendBucketIndex(DateTime trendTime, DateTime startTime, TimeSpan bucketDuration, int bucketMonths)
+        {
+            if (bucketMonths > 0)
+            {
+                int startMonth = startTime.Year * 12 + startTime.Month - 1;
+                int valueMonth = trendTime.Year * 12 + trendTime.Month - 1;
+                int monthDelta = valueMonth - startMonth;
+                return monthDelta < 0 ? -1 : monthDelta / bucketMonths;
+            }
+
+            double seconds = Math.Max(1D, bucketDuration.TotalSeconds);
+            return (int)Math.Floor((trendTime - startTime).TotalSeconds / seconds);
+        }
+
+        private static string FormatTrendLabel(DateTime time, TimeSpan bucketDuration)
+        {
+            if (bucketDuration.TotalHours < 24)
+            {
+                return time.ToString("HH:mm");
+            }
+
+            if (bucketDuration.TotalDays < 365)
+            {
+                return time.ToString("M-d");
+            }
+
+            return time.ToString("yyyy");
         }
 
         private static decimal ReadDecimal(SQLiteConnection connection, string sql, DateTime? startTime, DateTime? endTime)

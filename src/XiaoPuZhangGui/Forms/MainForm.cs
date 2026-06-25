@@ -19,6 +19,7 @@ namespace XiaoPuZhangGui.Forms
         private readonly Panel _navigationPanel;
         private readonly FlowLayoutPanel _navigationListPanel;
         private readonly Panel _contentPanel;
+        private readonly Label _footerLabel;
         private readonly Dictionary<string, Button> _navigationButtons;
 
         public MainForm()
@@ -27,7 +28,7 @@ namespace XiaoPuZhangGui.Forms
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(1100, 680);
             Size = new Size(1240, 760);
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
+            Font = UiTheme.Font(11F);
             BackColor = Color.White;
             ApplyApplicationIcon();
 
@@ -37,7 +38,7 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Left,
                 Width = 220,
-                BackColor = Color.FromArgb(52, 58, 64),
+                BackColor = UiTheme.SidebarDark,
                 Padding = new Padding(0)
             };
 
@@ -50,18 +51,34 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = _navigationPanel.BackColor,
                 Padding = new Padding(0, 8, 0, 0)
             };
+            _navigationListPanel.HorizontalScroll.Enabled = false;
+            _navigationListPanel.HorizontalScroll.Visible = false;
+            _navigationListPanel.Resize += delegate { ResizeNavigationButtons(); };
 
             _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.FromArgb(248, 249, 250)
+                BackColor = UiTheme.PageBackground
+            };
+
+            _footerLabel = new Label
+            {
+                Dock = DockStyle.Bottom,
+                Height = 40,
+                Text = "本地离线运行",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = UiTheme.Font(9.5F),
+                ForeColor = Color.FromArgb(196, 211, 229),
+                BackColor = UiTheme.SidebarDark
             };
 
             Controls.Add(_contentPanel);
             Controls.Add(_navigationPanel);
             _navigationPanel.Controls.Add(_navigationListPanel);
+            _navigationPanel.Controls.Add(_footerLabel);
 
             BuildNavigation();
+            ResizeNavigationButtons();
             ShowPage(HomeDashboardTitle);
         }
 
@@ -104,7 +121,7 @@ namespace XiaoPuZhangGui.Forms
                 Height = 72,
                 Text = "小铺掌柜",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Bold),
+                Font = UiTheme.Font(18F, FontStyle.Bold),
                 ForeColor = Color.White
             };
 
@@ -116,24 +133,46 @@ namespace XiaoPuZhangGui.Forms
             Button button = new Button
             {
                 Height = 60,
-                Width = _navigationPanel.Width,
-                Text = title,
+                Width = _navigationListPanel.ClientSize.Width,
+                Text = "     " + title,
                 Tag = description,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(16, 0, 0, 0),
+                Padding = new Padding(18, 0, 0, 0),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
+                Font = UiTheme.Font(11F, FontStyle.Bold),
                 ForeColor = Color.White,
-                BackColor = Color.FromArgb(52, 58, 64),
-                Cursor = Cursors.Hand
+                BackColor = UiTheme.SidebarDark,
+                Cursor = Cursors.Hand,
+                Margin = new Padding(0)
             };
 
             button.FlatAppearance.BorderSize = 0;
-            UiAssetHelper.ApplyIcon(button, iconName, 22, Color.FromArgb(221, 235, 255));
+            button.FlatAppearance.MouseOverBackColor = UiTheme.SidebarDarkHover;
+            button.FlatAppearance.MouseDownBackColor = UiTheme.SidebarSelected;
+            UiAssetHelper.ApplyIcon(button, "nav_" + ResolveNavigationIconKey(iconName), 22, Color.FromArgb(221, 235, 255));
+            button.ImageAlign = ContentAlignment.MiddleLeft;
+            button.TextImageRelation = TextImageRelation.Overlay;
             button.Click += delegate { ShowPage(title); };
 
             _navigationButtons.Add(title, button);
             _navigationListPanel.Controls.Add(button);
+        }
+
+        private void ResizeNavigationButtons()
+        {
+            int width = _navigationListPanel.ClientSize.Width;
+            if (width <= 0)
+            {
+                width = _navigationPanel.Width;
+            }
+
+            foreach (Button button in _navigationButtons.Values)
+            {
+                button.Width = width;
+            }
+
+            _navigationListPanel.HorizontalScroll.Value = 0;
+            _navigationListPanel.HorizontalScroll.Visible = false;
         }
 
         private void ShowPage(string title)
@@ -141,57 +180,57 @@ namespace XiaoPuZhangGui.Forms
             foreach (KeyValuePair<string, Button> item in _navigationButtons)
             {
                 item.Value.BackColor = item.Key == title
-                    ? Color.FromArgb(0, 123, 255)
-                    : Color.FromArgb(52, 58, 64);
+                    ? UiTheme.SidebarSelected
+                    : UiTheme.SidebarDark;
             }
 
             _contentPanel.Controls.Clear();
 
             if (title == HomeDashboardTitle)
             {
-                _contentPanel.Controls.Add(new DashboardPage(ShowPage));
+                ShowContentPage(new DashboardPage(ShowPage));
                 return;
             }
 
             if (title == SalesManagementTitle)
             {
-                _contentPanel.Controls.Add(new SalesManagementPage());
+                ShowContentPage(new SalesManagementPage());
                 return;
             }
 
             if (title == ProductManagementTitle)
             {
-                _contentPanel.Controls.Add(new ProductManagementPage());
+                ShowContentPage(new ProductManagementPage());
                 return;
             }
 
             if (title == PurchaseManagementTitle)
             {
-                _contentPanel.Controls.Add(new PurchaseManagementPage());
+                ShowContentPage(new PurchaseManagementPage());
                 return;
             }
 
             if (title == InventoryCheckTitle)
             {
-                _contentPanel.Controls.Add(new InventoryCheckPage());
+                ShowContentPage(new InventoryCheckPage());
                 return;
             }
 
             if (title == CreditManagementTitle)
             {
-                _contentPanel.Controls.Add(new CreditManagementPage());
+                ShowContentPage(new CreditManagementPage());
                 return;
             }
 
             if (title == ReportTitle)
             {
-                _contentPanel.Controls.Add(new ReportPage());
+                ShowContentPage(new ReportPage());
                 return;
             }
 
             if (title == SettingsTitle)
             {
-                _contentPanel.Controls.Add(new SettingsPage());
+                ShowContentPage(new SettingsPage());
                 return;
             }
 
@@ -199,7 +238,18 @@ namespace XiaoPuZhangGui.Forms
                 ? _navigationButtons[title].Tag.ToString()
                 : string.Empty;
 
-            _contentPanel.Controls.Add(new PlaceholderPage(title, description));
+            ShowContentPage(new PlaceholderPage(title, description));
+        }
+
+        private void ShowContentPage(Control page)
+        {
+            UiComponentHelper.NormalizeControlMetrics(page);
+            _contentPanel.Controls.Add(page);
+        }
+
+        private static string ResolveNavigationIconKey(string iconName)
+        {
+            return iconName == "home" ? "dashboard" : iconName;
         }
     }
 }

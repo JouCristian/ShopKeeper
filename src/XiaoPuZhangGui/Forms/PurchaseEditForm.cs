@@ -147,7 +147,7 @@ namespace XiaoPuZhangGui.Forms
                 Text = "加入明细",
                 Location = new Point(770, 112),
                 Size = new Size(120, 40),
-                BackColor = Color.FromArgb(40, 167, 69),
+                BackColor = UiTheme.SuccessGreen,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold)
@@ -190,7 +190,7 @@ namespace XiaoPuZhangGui.Forms
                 Text = "保存入库单",
                 Location = new Point(800, 600),
                 Size = new Size(140, 44),
-                BackColor = Color.FromArgb(0, 123, 255),
+                BackColor = UiTheme.PrimaryBlue,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold)

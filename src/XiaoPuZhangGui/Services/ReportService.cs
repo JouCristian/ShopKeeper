@@ -75,6 +75,12 @@ namespace XiaoPuZhangGui.Services
             return _reportRepository.GetScrapSummary(startTime, endTime, DefaultScrapLimit);
         }
 
+        public IList<ProfitTrendPoint> GetProfitTrend(DateTime startTime, DateTime endTime, TimeSpan bucketDuration, int bucketMonths)
+        {
+            NormalizeRange(ref startTime, ref endTime);
+            return _reportRepository.GetProfitTrend(startTime, endTime, bucketDuration, bucketMonths);
+        }
+
         public static DateTime GetDayStart(DateTime day)
         {
             return day.Date;

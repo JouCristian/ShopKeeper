@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -98,7 +99,7 @@ namespace XiaoPuZhangGui.Forms
             Label noteLabel = new Label
             {
                 Text = "提示：正式使用后，库存变化建议通过入库、销售、盘点模块完成。",
-                ForeColor = Color.FromArgb(108, 117, 125),
+                ForeColor = UiTheme.TextSecondary,
                 Location = new Point(32, 600),
                 Size = new Size(440, 30)
             };
@@ -109,7 +110,7 @@ namespace XiaoPuZhangGui.Forms
                 Text = "保存",
                 Location = new Point(500, 590),
                 Size = new Size(120, 42),
-                BackColor = Color.FromArgb(0, 123, 255),
+                BackColor = UiTheme.PrimaryBlue,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold)

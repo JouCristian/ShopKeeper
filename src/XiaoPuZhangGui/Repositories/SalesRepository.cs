@@ -182,6 +182,48 @@ ORDER BY id ASC;";
             }
         }
 
+        public void Delete(long id)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        IList<SalesItem> items = GetItems(connection, transaction, id);
+                        if (items.Count == 0 && !Exists(connection, transaction, id))
+                        {
+                            throw new InvalidOperationException("销售单不存在或已被删除。");
+                        }
+
+                        foreach (SalesItem item in items)
+                        {
+                            if (item.ProductId <= 0)
+                            {
+                                continue;
+                            }
+
+                            IncreaseProductStock(connection, transaction, item.ProductId, item.Quantity);
+                            InsertReversalBatch(connection, transaction, item);
+                        }
+
+                        DeleteCreditBySalesOrder(connection, transaction, id);
+                        DeleteItems(connection, transaction, id);
+                        DeleteOrder(connection, transaction, id);
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         private static long InsertOrder(SQLiteConnection connection, SQLiteTransaction transaction, SalesOrder order)
         {
             using (SQLiteCommand command = connection.CreateCommand())
@@ -237,6 +279,138 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@profit_snapshot", item.LineProfit);
                 command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 return (long)command.ExecuteScalar();
+            }
+        }
+
+        private static bool Exists(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT COUNT(1) FROM sales_orders WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                return Convert.ToInt32(command.ExecuteScalar()) > 0;
+            }
+        }
+
+        private static IList<SalesItem> GetItems(SQLiteConnection connection, SQLiteTransaction transaction, long salesOrderId)
+        {
+            List<SalesItem> items = new List<SalesItem>();
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT id, sales_order_id, product_id, product_name_snapshot, quantity,
+       sale_price_snapshot, cost_price_snapshot, line_amount, line_cost,
+       line_profit, created_at, updated_at
+FROM sales_items
+WHERE sales_order_id = @sales_order_id
+ORDER BY id ASC;";
+                command.Parameters.AddWithValue("@sales_order_id", salesOrderId);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        items.Add(ReadItem(reader));
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        private static void IncreaseProductStock(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal quantity)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE products
+SET current_stock = current_stock + @quantity,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+                command.Parameters.AddWithValue("@quantity", quantity);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void InsertReversalBatch(SQLiteConnection connection, SQLiteTransaction transaction, SalesItem item)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+INSERT INTO stock_batches
+    (product_id, purchase_item_id, batch_code, source_type, source_id, quantity_in,
+     quantity_remaining, purchase_price, quantity, remaining_quantity, unit_cost,
+     expiry_date, created_at)
+VALUES
+    (@product_id, NULL, @batch_code, 'DeleteSales', @source_id, @quantity,
+     @quantity, @unit_cost, @quantity, @quantity, @unit_cost, NULL, @created_at);";
+                command.Parameters.AddWithValue("@product_id", item.ProductId);
+                command.Parameters.AddWithValue("@batch_code", "DEL-SAL-" + item.Id.ToString("000000"));
+                command.Parameters.AddWithValue("@source_id", item.Id);
+                command.Parameters.AddWithValue("@quantity", item.Quantity);
+                command.Parameters.AddWithValue("@unit_cost", item.CostPriceSnapshot);
+                command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteCreditBySalesOrder(SQLiteConnection connection, SQLiteTransaction transaction, long salesOrderId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+DELETE FROM credit_payments
+WHERE credit_record_id IN (SELECT id FROM credit_records WHERE sales_order_id = @sales_order_id);";
+                command.Parameters.AddWithValue("@sales_order_id", salesOrderId);
+                command.ExecuteNonQuery();
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+DELETE FROM repayment_records
+WHERE credit_record_id IN (SELECT id FROM credit_records WHERE sales_order_id = @sales_order_id);";
+                command.Parameters.AddWithValue("@sales_order_id", salesOrderId);
+                command.ExecuteNonQuery();
+            }
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM credit_records WHERE sales_order_id = @sales_order_id;";
+                command.Parameters.AddWithValue("@sales_order_id", salesOrderId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteItems(SQLiteConnection connection, SQLiteTransaction transaction, long salesOrderId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM sales_items WHERE sales_order_id = @sales_order_id;";
+                command.Parameters.AddWithValue("@sales_order_id", salesOrderId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteOrder(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM sales_orders WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                command.ExecuteNonQuery();
             }
         }
 

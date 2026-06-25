@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
@@ -24,6 +25,9 @@ namespace XiaoPuZhangGui.Forms
         private Label _rangeLabel;
         private Label _topSalesLabel;
         private Label _topProfitLabel;
+        private ProfitTrendChart _profitTrendChart;
+        private Button _trendUnitButton;
+        private TrendUnitOption _trendUnitOption;
 
         private Label _salesReceivableValueLabel;
         private Label _salesPaidValueLabel;
@@ -60,17 +64,17 @@ namespace XiaoPuZhangGui.Forms
             _scrapBindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
+            BackColor = UiTheme.PageBackground;
+            Font = UiTheme.Font(11F);
 
             Label titleLabel = new Label
             {
                 AutoSize = false,
                 Dock = DockStyle.Top,
-                Height = 72,
+                Height = 86,
                 Text = "经营报表",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(28F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(28, 0, 0, 0)
             };
@@ -100,7 +104,7 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 150,
-                BackColor = Color.White,
+                BackColor = UiTheme.CardBackground,
                 Padding = new Padding(14, 12, 14, 12)
             };
 
@@ -110,7 +114,7 @@ namespace XiaoPuZhangGui.Forms
                 Height = 62,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
-                BackColor = Color.White
+                BackColor = UiTheme.CardBackground
             };
 
             FlowLayoutPanel exportButtons = new FlowLayoutPanel
@@ -119,14 +123,14 @@ namespace XiaoPuZhangGui.Forms
                 Height = 62,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
-                BackColor = Color.White
+                BackColor = UiTheme.CardBackground
             };
 
             _modeComboBox = new ComboBox
             {
                 Width = 150,
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Microsoft YaHei UI", 11F),
+                Font = UiTheme.Font(11F),
                 Margin = new Padding(0, 10, 14, 0)
             };
             _modeComboBox.Items.AddRange(new object[] { "今日", "昨日", "本月", "上月", "自定义日期范围" });
@@ -135,18 +139,10 @@ namespace XiaoPuZhangGui.Forms
             _startDatePicker = CreateDatePicker(DateTime.Today);
             _endDatePicker = CreateDatePicker(DateTime.Today);
 
-            Button queryButton = new Button
-            {
-                Text = "查询",
-                Width = 88,
-                Height = 38,
-                Margin = new Padding(0, 8, 18, 0),
-                BackColor = Color.FromArgb(0, 123, 255),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
-            };
-            queryButton.FlatAppearance.BorderSize = 0;
+            Button queryButton = UiComponentHelper.CreatePrimaryButton("查询", 88);
+            queryButton.Margin = new Padding(0, 8, 18, 0);
+            UiAssetHelper.ApplyIcon(queryButton, "action_search", 18, Color.White);
+            UiComponentHelper.CenterButtonIcon(queryButton);
             queryButton.Click += delegate { LoadSelectedReport(); };
 
             _rangeLabel = new Label
@@ -155,7 +151,7 @@ namespace XiaoPuZhangGui.Forms
                 Height = 38,
                 Margin = new Padding(0, 9, 0, 0),
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.FromArgb(73, 80, 87)
+                ForeColor = UiTheme.TextSecondary
             };
 
             filters.Controls.Add(CreateFilterLabel("统计模式", 76));
@@ -166,21 +162,21 @@ namespace XiaoPuZhangGui.Forms
             filters.Controls.Add(_endDatePicker);
             filters.Controls.Add(queryButton);
             filters.Controls.Add(_rangeLabel);
+            UiComponentHelper.NormalizeFilterBar(filters);
 
-            Button exportReportButton = CreateExportButton("导出当前报表", Color.FromArgb(0, 123, 255), 128);
+            Button exportReportButton = CreateExportButton("导出当前报表", UiTheme.PrimaryBlue, 132);
             exportReportButton.Click += ExportReportButton_Click;
 
-            Button exportInventoryButton = CreateExportButton("导出库存清单", Color.FromArgb(40, 167, 69), 128);
+            Button exportInventoryButton = CreateExportButton("导出库存清单", UiTheme.SuccessGreen, 132);
             exportInventoryButton.Click += ExportInventoryButton_Click;
 
-            Button exportCreditButton = CreateExportButton("导出赊账清单", Color.FromArgb(255, 193, 7), 128);
-            exportCreditButton.ForeColor = Color.FromArgb(33, 37, 41);
+            Button exportCreditButton = CreateExportButton("导出赊账清单", UiTheme.WarningOrange, 132);
             exportCreditButton.Click += ExportCreditButton_Click;
 
-            Button exportExpiringButton = CreateExportButton("导出临期清单", Color.FromArgb(23, 162, 184), 128);
+            Button exportExpiringButton = CreateExportButton("导出临期清单", UiTheme.InfoCyan, 132);
             exportExpiringButton.Click += ExportExpiringButton_Click;
 
-            Button openFolderButton = CreateExportButton("打开导出目录", Color.FromArgb(108, 117, 125), 128);
+            Button openFolderButton = CreateExportButton("打开导出目录", UiTheme.MutedGray, 132);
             openFolderButton.Click += OpenFolderButton_Click;
 
             exportButtons.Controls.Add(exportReportButton);
@@ -189,8 +185,26 @@ namespace XiaoPuZhangGui.Forms
             exportButtons.Controls.Add(exportExpiringButton);
             exportButtons.Controls.Add(openFolderButton);
 
-            panel.Controls.Add(exportButtons);
-            panel.Controls.Add(filters);
+            Panel controlsPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = UiTheme.CardBackground
+            };
+            controlsPanel.Controls.Add(exportButtons);
+            controlsPanel.Controls.Add(filters);
+
+            PictureBox reportPicture = new PictureBox
+            {
+                Dock = DockStyle.Right,
+                Width = 320,
+                Image = UiAssetHelper.GetIllustration("report/header", new Size(340, 150)),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = UiTheme.CardBackground,
+                Margin = new Padding(12, 0, 0, 0)
+            };
+
+            panel.Controls.Add(controlsPanel);
+            panel.Controls.Add(reportPicture);
             return panel;
         }
 
@@ -217,18 +231,18 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                BackColor = Color.FromArgb(248, 249, 250),
+                BackColor = UiTheme.PageBackground,
                 Padding = new Padding(8)
             };
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 318));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 86));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             TableLayoutPanel cards = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 4,
                 RowCount = 3,
-                BackColor = Color.FromArgb(248, 249, 250)
+                BackColor = UiTheme.PageBackground
             };
 
             for (int i = 0; i < 4; i++)
@@ -254,25 +268,126 @@ namespace XiaoPuZhangGui.Forms
             cards.Controls.Add(CreateMetricCard("卖出件数", out _soldQuantityValueLabel), 2, 2);
             cards.Controls.Add(CreateMetricCard("进货总额", out _purchaseTotalValueLabel), 3, 2);
 
-            TableLayoutPanel highlights = new TableLayoutPanel
+            TableLayoutPanel bottomLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 1,
-                BackColor = Color.FromArgb(248, 249, 250)
+                BackColor = UiTheme.PageBackground
             };
-            highlights.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            highlights.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            bottomLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66.67F));
+            bottomLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
 
             _topSalesLabel = CreateHighlightLabel("销量最高商品：暂无数据");
             _topProfitLabel = CreateHighlightLabel("毛利润最高商品：暂无数据");
-            highlights.Controls.Add(_topSalesLabel, 0, 0);
-            highlights.Controls.Add(_topProfitLabel, 1, 0);
+
+            TableLayoutPanel highlightStack = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                BackColor = UiTheme.PageBackground
+            };
+            highlightStack.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            highlightStack.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            highlightStack.Controls.Add(_topSalesLabel, 0, 0);
+            highlightStack.Controls.Add(_topProfitLabel, 0, 1);
+
+            bottomLayout.Controls.Add(CreateProfitTrendCard(), 0, 0);
+            bottomLayout.Controls.Add(highlightStack, 1, 0);
 
             layout.Controls.Add(cards, 0, 0);
-            layout.Controls.Add(highlights, 0, 1);
+            layout.Controls.Add(bottomLayout, 0, 1);
             tab.Controls.Add(layout);
             return tab;
+        }
+
+        private Panel CreateProfitTrendCard()
+        {
+            Panel card = UiComponentHelper.CreateCardPanel(new Padding(14));
+            card.Dock = DockStyle.Fill;
+            card.Margin = new Padding(6);
+
+            Panel header = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 38,
+                BackColor = UiTheme.CardBackground
+            };
+
+            Label title = new Label
+            {
+                Dock = DockStyle.Fill,
+                Text = "利润统计折线图",
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            _trendUnitButton = new Button
+            {
+                Dock = DockStyle.Right,
+                Width = 40,
+                Height = 32,
+                BackColor = Color.White,
+                ForeColor = UiTheme.PrimaryBlue,
+                FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand,
+                Text = string.Empty
+            };
+            _trendUnitButton.FlatAppearance.BorderColor = UiTheme.CardBorder;
+            _trendUnitButton.FlatAppearance.BorderSize = 1;
+            UiAssetHelper.ApplyIcon(_trendUnitButton, "nav_settings", 18, UiTheme.PrimaryBlue);
+            UiComponentHelper.CenterButtonIcon(_trendUnitButton);
+            _trendUnitButton.Click += TrendUnitButton_Click;
+            new ToolTip().SetToolTip(_trendUnitButton, "设置横坐标单位");
+
+            header.Controls.Add(title);
+            header.Controls.Add(_trendUnitButton);
+
+            _profitTrendChart = new ProfitTrendChart
+            {
+                Dock = DockStyle.Fill,
+                BackColor = UiTheme.CardBackground
+            };
+
+            card.Controls.Add(_profitTrendChart);
+            card.Controls.Add(header);
+            return card;
+        }
+
+        private void TrendUnitButton_Click(object sender, EventArgs e)
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            AddTrendUnitMenuItem(menu, "自动", TrendUnitOption.Auto);
+            AddTrendUnitMenuItem(menu, "30分钟", TrendUnitOption.Minute30);
+            AddTrendUnitMenuItem(menu, "1小时", TrendUnitOption.Hour1);
+            AddTrendUnitMenuItem(menu, "3小时", TrendUnitOption.Hour3);
+            AddTrendUnitMenuItem(menu, "6小时", TrendUnitOption.Hour6);
+            AddTrendUnitMenuItem(menu, "一天", TrendUnitOption.Day1);
+            AddTrendUnitMenuItem(menu, "3天", TrendUnitOption.Day3);
+            AddTrendUnitMenuItem(menu, "10天", TrendUnitOption.Day10);
+            AddTrendUnitMenuItem(menu, "15天", TrendUnitOption.Day15);
+            AddTrendUnitMenuItem(menu, "一个月", TrendUnitOption.Month1);
+            AddTrendUnitMenuItem(menu, "3个月", TrendUnitOption.Month3);
+            AddTrendUnitMenuItem(menu, "6个月", TrendUnitOption.Month6);
+            AddTrendUnitMenuItem(menu, "一年", TrendUnitOption.Year1);
+            menu.Show(_trendUnitButton, new Point(0, _trendUnitButton.Height));
+        }
+
+        private void AddTrendUnitMenuItem(ContextMenuStrip menu, string text, TrendUnitOption option)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text)
+            {
+                Checked = _trendUnitOption == option,
+                Tag = option
+            };
+            item.Click += delegate
+            {
+                _trendUnitOption = (TrendUnitOption)item.Tag;
+                LoadSelectedReport();
+            };
+            menu.Items.Add(item);
         }
 
         private TabPage BuildRankTab()
@@ -283,7 +398,7 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal,
                 SplitterDistance = 260,
-                BackColor = Color.FromArgb(248, 249, 250)
+                BackColor = UiTheme.PageBackground
             };
 
             _salesRankGrid = CreateGrid();
@@ -310,7 +425,7 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal,
                 SplitterDistance = 260,
-                BackColor = Color.FromArgb(248, 249, 250)
+                BackColor = UiTheme.PageBackground
             };
 
             _lowStockGrid = CreateGrid();
@@ -371,8 +486,10 @@ namespace XiaoPuZhangGui.Forms
                 IList<LowStockReportItem> lowStockItems = _reportService.GetLowStockItems();
                 IList<ExpiringProductReportItem> expiringItems = _reportService.GetExpiringProducts();
                 IList<ScrapSummaryItem> scrapItems = _reportService.GetScrapSummary(startTime, endTime);
+                TrendBucket trendBucket = ResolveTrendBucket(startTime, endTime);
+                IList<ProfitTrendPoint> trendPoints = _reportService.GetProfitTrend(startTime, endTime, trendBucket.Duration, trendBucket.Months);
 
-                BindReport(summary, salesRank, profitRank, lowStockItems, expiringItems, scrapItems);
+                BindReport(summary, salesRank, profitRank, lowStockItems, expiringItems, scrapItems, trendPoints, trendBucket.Label);
             }
             catch (Exception ex)
             {
@@ -514,13 +631,67 @@ namespace XiaoPuZhangGui.Forms
             return false;
         }
 
+        private TrendBucket ResolveTrendBucket(DateTime startTime, DateTime endTime)
+        {
+            if (_trendUnitOption != TrendUnitOption.Auto)
+            {
+                return ResolveTrendBucketByOption(_trendUnitOption);
+            }
+
+            string mode = _modeComboBox.SelectedItem == null ? "今日" : _modeComboBox.SelectedItem.ToString();
+            if (mode == "本月" || mode == "上月")
+            {
+                return new TrendBucket(TimeSpan.FromDays(1), 0, "自动：一天");
+            }
+
+            if (mode == "自定义日期范围" && (endTime - startTime).TotalDays > 2D)
+            {
+                return new TrendBucket(TimeSpan.FromDays(1), 0, "自动：一天");
+            }
+
+            return new TrendBucket(TimeSpan.FromHours(1), 0, "自动：1小时");
+        }
+
+        private static TrendBucket ResolveTrendBucketByOption(TrendUnitOption option)
+        {
+            switch (option)
+            {
+                case TrendUnitOption.Minute30:
+                    return new TrendBucket(TimeSpan.FromMinutes(30), 0, "30分钟");
+                case TrendUnitOption.Hour3:
+                    return new TrendBucket(TimeSpan.FromHours(3), 0, "3小时");
+                case TrendUnitOption.Hour6:
+                    return new TrendBucket(TimeSpan.FromHours(6), 0, "6小时");
+                case TrendUnitOption.Day1:
+                    return new TrendBucket(TimeSpan.FromDays(1), 0, "一天");
+                case TrendUnitOption.Day3:
+                    return new TrendBucket(TimeSpan.FromDays(3), 0, "3天");
+                case TrendUnitOption.Day10:
+                    return new TrendBucket(TimeSpan.FromDays(10), 0, "10天");
+                case TrendUnitOption.Day15:
+                    return new TrendBucket(TimeSpan.FromDays(15), 0, "15天");
+                case TrendUnitOption.Month1:
+                    return new TrendBucket(TimeSpan.Zero, 1, "一个月");
+                case TrendUnitOption.Month3:
+                    return new TrendBucket(TimeSpan.Zero, 3, "3个月");
+                case TrendUnitOption.Month6:
+                    return new TrendBucket(TimeSpan.Zero, 6, "6个月");
+                case TrendUnitOption.Year1:
+                    return new TrendBucket(TimeSpan.Zero, 12, "一年");
+                default:
+                    return new TrendBucket(TimeSpan.FromHours(1), 0, "1小时");
+            }
+        }
+
         private void BindReport(
             ReportSummary summary,
             IList<ProductSalesRankItem> salesRank,
             IList<ProductProfitRankItem> profitRank,
             IList<LowStockReportItem> lowStockItems,
             IList<ExpiringProductReportItem> expiringItems,
-            IList<ScrapSummaryItem> scrapItems)
+            IList<ScrapSummaryItem> scrapItems,
+            IList<ProfitTrendPoint> trendPoints,
+            string trendUnitLabel)
         {
             _salesReceivableValueLabel.Text = FormatMoney(summary.SalesReceivable);
             _salesPaidValueLabel.Text = FormatMoney(summary.SalesPaid);
@@ -547,6 +718,7 @@ namespace XiaoPuZhangGui.Forms
             _lowStockBindingSource.DataSource = lowStockItems;
             _expiringBindingSource.DataSource = expiringItems;
             _scrapBindingSource.DataSource = scrapItems;
+            _profitTrendChart.SetData(trendPoints, trendUnitLabel);
 
             _salesRankEmptyLabel.Visible = salesRank.Count == 0;
             _profitRankEmptyLabel.Visible = profitRank.Count == 0;
@@ -599,32 +771,32 @@ namespace XiaoPuZhangGui.Forms
 
         private static Panel CreateMetricCard(string title, out Label valueLabel)
         {
-            Panel card = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle,
-                Margin = new Padding(6),
-                Padding = new Padding(14, 10, 14, 10)
-            };
+            Color metricColor = ResolveMetricColor(title);
+            Color backgroundColor = ResolveMetricBackground(title);
+            Panel card = UiComponentHelper.CreateCardPanel(
+                new Padding(14, 10, 14, 10),
+                backgroundColor,
+                ResolveMetricBorder(title));
+            card.Dock = DockStyle.Fill;
+            card.Margin = new Padding(6);
 
-            Label titleLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 28,
-                Text = title,
-                TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.FromArgb(73, 80, 87),
-                Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Regular)
-            };
+            Label titleLabel = UiComponentHelper.CreateIconTextLabel(title, ResolveMetricIcon(title), 18, metricColor);
+            titleLabel.Dock = DockStyle.Top;
+            titleLabel.Height = 28;
+            titleLabel.ForeColor = UiTheme.TextSecondary;
+            titleLabel.Font = UiTheme.Font(10.5F, FontStyle.Bold);
+            titleLabel.TextAlign = ContentAlignment.MiddleLeft;
+            titleLabel.AutoEllipsis = true;
+            titleLabel.BackColor = backgroundColor;
 
             valueLabel = new Label
             {
                 Dock = DockStyle.Fill,
                 Text = "0.00",
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.FromArgb(33, 37, 41),
-                Font = new Font("Microsoft YaHei UI", 16F, FontStyle.Bold)
+                BackColor = backgroundColor,
+                ForeColor = UiTheme.TextPrimary,
+                Font = UiTheme.Font(18F, FontStyle.Bold)
             };
 
             card.Controls.Add(valueLabel);
@@ -640,11 +812,11 @@ namespace XiaoPuZhangGui.Forms
                 Text = text,
                 Margin = new Padding(6),
                 Padding = new Padding(14, 0, 14, 0),
-                BackColor = Color.White,
+                BackColor = UiTheme.CardBackground,
                 BorderStyle = BorderStyle.FixedSingle,
                 TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41)
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary
             };
         }
 
@@ -654,7 +826,7 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(8),
-                BackColor = Color.FromArgb(248, 249, 250)
+                BackColor = UiTheme.PageBackground
             };
 
             Label titleLabel = new Label
@@ -662,7 +834,8 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Top,
                 Height = 36,
                 Text = title,
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
@@ -694,19 +867,7 @@ namespace XiaoPuZhangGui.Forms
 
         private static Label CreateEmptyLabel(string text)
         {
-            return new Label
-            {
-                Dock = DockStyle.Bottom,
-                Height = 34,
-                Text = text,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Image = UiAssetHelper.GetIcon("empty_box", 22),
-                ImageAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.FromArgb(108, 117, 125),
-                BackColor = Color.White,
-                Padding = new Padding(40, 0, 0, 0),
-                Visible = false
-            };
+            return UiComponentHelper.CreateEmptyStateLabel(text, "empty/report");
         }
 
         private static DateTimePicker CreateDatePicker(DateTime value)
@@ -733,9 +894,10 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold)
             };
             button.FlatAppearance.BorderSize = 0;
+            UiComponentHelper.ApplyButtonChrome(button, color, Color.Empty);
             if (text.Contains("导出"))
             {
                 UiAssetHelper.ApplyIcon(button, "export_excel", 18, Color.White);
@@ -753,8 +915,114 @@ namespace XiaoPuZhangGui.Forms
                 Width = width,
                 Height = 38,
                 Margin = new Padding(0, 9, 6, 0),
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = UiTheme.TextSecondary
             };
+        }
+
+        private static Color ResolveMetricColor(string title)
+        {
+            if (title.Contains("报废"))
+            {
+                return Color.FromArgb(198, 40, 40);
+            }
+
+            if (title.Contains("赊账") || title.Contains("欠款"))
+            {
+                return Color.FromArgb(191, 79, 0);
+            }
+
+            if (title.Contains("利润") || title.Contains("实收") || title.Contains("已收"))
+            {
+                return Color.FromArgb(13, 122, 66);
+            }
+
+            if (title.Contains("成本") || title.Contains("进货"))
+            {
+                return Color.FromArgb(8, 112, 145);
+            }
+
+            if (title.Contains("单数") || title.Contains("件数"))
+            {
+                return Color.FromArgb(37, 99, 235);
+            }
+
+            return Color.FromArgb(25, 103, 210);
+        }
+
+        private static Color ResolveMetricBackground(string title)
+        {
+            if (title.Contains("报废"))
+            {
+                return UiTheme.SoftRed;
+            }
+
+            if (title.Contains("赊账") || title.Contains("欠款"))
+            {
+                return UiTheme.SoftOrange;
+            }
+
+            if (title.Contains("利润") || title.Contains("实收") || title.Contains("已收"))
+            {
+                return UiTheme.SoftGreen;
+            }
+
+            if (title.Contains("成本") || title.Contains("进货"))
+            {
+                return UiTheme.SoftCyan;
+            }
+
+            return UiTheme.CardBackground;
+        }
+
+        private static Color ResolveMetricBorder(string title)
+        {
+            if (title.Contains("报废"))
+            {
+                return UiTheme.DangerBorder;
+            }
+
+            if (title.Contains("赊账") || title.Contains("欠款"))
+            {
+                return UiTheme.WarningBorder;
+            }
+
+            if (title.Contains("利润") || title.Contains("实收") || title.Contains("已收"))
+            {
+                return UiTheme.SuccessBorder;
+            }
+
+            if (title.Contains("成本") || title.Contains("进货"))
+            {
+                return UiTheme.InfoBorder;
+            }
+
+            return UiTheme.CardBorder;
+        }
+
+        private static string ResolveMetricIcon(string title)
+        {
+            if (title.Contains("销售") || title.Contains("实收") || title.Contains("应收"))
+            {
+                return "nav_sales";
+            }
+
+            if (title.Contains("赊账") || title.Contains("欠款"))
+            {
+                return "nav_credit";
+            }
+
+            if (title.Contains("入库"))
+            {
+                return "nav_purchase";
+            }
+
+            if (title.Contains("报废"))
+            {
+                return "warning_stock";
+            }
+
+            return "nav_report";
         }
 
         private static void AddTextColumn(DataGridView grid, string headerText, string propertyName, int width)
@@ -792,9 +1060,215 @@ namespace XiaoPuZhangGui.Forms
             grid.Columns.Add(column);
         }
 
+        private sealed class TrendBucket
+        {
+            public TrendBucket(TimeSpan duration, int months, string label)
+            {
+                Duration = duration;
+                Months = months;
+                Label = label;
+            }
+
+            public TimeSpan Duration { get; private set; }
+
+            public int Months { get; private set; }
+
+            public string Label { get; private set; }
+        }
+
+        private enum TrendUnitOption
+        {
+            Auto,
+            Minute30,
+            Hour1,
+            Hour3,
+            Hour6,
+            Day1,
+            Day3,
+            Day10,
+            Day15,
+            Month1,
+            Month3,
+            Month6,
+            Year1
+        }
+
         private static string FormatMoney(decimal value)
         {
             return value.ToString("N2");
+        }
+    }
+
+    internal sealed class ProfitTrendChart : Control
+    {
+        private IList<ProfitTrendPoint> _points = new List<ProfitTrendPoint>();
+        private string _unitLabel = string.Empty;
+
+        public ProfitTrendChart()
+        {
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+            Font = UiTheme.Font(9.5F);
+        }
+
+        public void SetData(IList<ProfitTrendPoint> points, string unitLabel)
+        {
+            _points = points ?? new List<ProfitTrendPoint>();
+            _unitLabel = string.IsNullOrWhiteSpace(unitLabel) ? string.Empty : unitLabel;
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.Clear(BackColor);
+
+            Rectangle plot = new Rectangle(68, 22, Math.Max(10, Width - 92), Math.Max(10, Height - 74));
+            DrawCaption(e.Graphics, plot);
+
+            if (_points == null || _points.Count == 0)
+            {
+                DrawEmpty(e.Graphics, plot);
+                return;
+            }
+
+            decimal min = 0M;
+            decimal max = 0M;
+            foreach (ProfitTrendPoint point in _points)
+            {
+                min = Math.Min(min, point.NetProfit);
+                max = Math.Max(max, point.NetProfit);
+            }
+
+            if (min == max)
+            {
+                max += 1M;
+                min -= 1M;
+            }
+
+            DrawGrid(e.Graphics, plot, min, max);
+            DrawLine(e.Graphics, plot, min, max);
+            DrawXAxisLabels(e.Graphics, plot);
+        }
+
+        private void DrawCaption(Graphics graphics, Rectangle plot)
+        {
+            string text = string.IsNullOrEmpty(_unitLabel) ? "净利润" : "净利润 · " + _unitLabel;
+            Rectangle bounds = new Rectangle(plot.Left, 0, Math.Max(0, plot.Width), 20);
+            TextRenderer.DrawText(graphics, text, Font, bounds, UiTheme.TextSecondary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        }
+
+        private void DrawEmpty(Graphics graphics, Rectangle plot)
+        {
+            TextRenderer.DrawText(
+                graphics,
+                "暂无利润趋势数据",
+                UiTheme.Font(11F, FontStyle.Bold),
+                plot,
+                UiTheme.TextSecondary,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+        }
+
+        private void DrawGrid(Graphics graphics, Rectangle plot, decimal min, decimal max)
+        {
+            using (Pen gridPen = new Pen(Color.FromArgb(229, 236, 246)))
+            using (Pen axisPen = new Pen(UiTheme.CardBorder))
+            {
+                for (int i = 0; i <= 4; i++)
+                {
+                    int y = plot.Top + (plot.Height * i / 4);
+                    graphics.DrawLine(gridPen, plot.Left, y, plot.Right, y);
+
+                    decimal value = max - ((max - min) * i / 4M);
+                    Rectangle labelBounds = new Rectangle(0, y - 10, plot.Left - 8, 20);
+                    TextRenderer.DrawText(graphics, FormatCompactMoney(value), Font, labelBounds, UiTheme.TextSecondary, TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+                }
+
+                graphics.DrawLine(axisPen, plot.Left, plot.Bottom, plot.Right, plot.Bottom);
+                graphics.DrawLine(axisPen, plot.Left, plot.Top, plot.Left, plot.Bottom);
+            }
+        }
+
+        private void DrawLine(Graphics graphics, Rectangle plot, decimal min, decimal max)
+        {
+            if (_points.Count == 1)
+            {
+                DrawPoint(graphics, plot.Left, ResolveY(plot, _points[0].NetProfit, min, max), UiTheme.PrimaryBlue);
+                return;
+            }
+
+            PointF[] points = new PointF[_points.Count];
+            for (int i = 0; i < _points.Count; i++)
+            {
+                float x = plot.Left + (plot.Width * i / (float)Math.Max(1, _points.Count - 1));
+                float y = ResolveY(plot, _points[i].NetProfit, min, max);
+                points[i] = new PointF(x, y);
+            }
+
+            using (Pen linePen = new Pen(UiTheme.PrimaryBlue, 2.4F))
+            {
+                linePen.StartCap = LineCap.Round;
+                linePen.EndCap = LineCap.Round;
+                linePen.LineJoin = LineJoin.Round;
+                graphics.DrawLines(linePen, points);
+            }
+
+            int pointStep = _points.Count <= 60 ? 1 : Math.Max(1, _points.Count / 24);
+            for (int i = 0; i < points.Length; i += pointStep)
+            {
+                DrawPoint(graphics, points[i].X, points[i].Y, UiTheme.PrimaryBlue);
+            }
+
+            PointF last = points[points.Length - 1];
+            DrawPoint(graphics, last.X, last.Y, UiTheme.SuccessGreen);
+            Rectangle valueBounds = new Rectangle(Math.Max(plot.Left, (int)last.X - 94), Math.Max(0, (int)last.Y - 30), 92, 22);
+            TextRenderer.DrawText(graphics, FormatCompactMoney(_points[_points.Count - 1].NetProfit), UiTheme.Font(9.5F, FontStyle.Bold), valueBounds, UiTheme.SuccessGreen, TextFormatFlags.Right | TextFormatFlags.VerticalCenter);
+        }
+
+        private void DrawXAxisLabels(Graphics graphics, Rectangle plot)
+        {
+            int labelCount = Math.Min(7, _points.Count);
+            int step = Math.Max(1, (_points.Count - 1) / Math.Max(1, labelCount - 1));
+            for (int i = 0; i < _points.Count; i += step)
+            {
+                float x = plot.Left + (plot.Width * i / (float)Math.Max(1, _points.Count - 1));
+                Rectangle bounds = new Rectangle((int)x - 36, plot.Bottom + 8, 72, 20);
+                TextRenderer.DrawText(graphics, _points[i].Label, Font, bounds, UiTheme.TextSecondary, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            }
+        }
+
+        private static float ResolveY(Rectangle plot, decimal value, decimal min, decimal max)
+        {
+            decimal span = max - min;
+            if (span == 0)
+            {
+                return plot.Top + plot.Height / 2F;
+            }
+
+            decimal ratio = (max - value) / span;
+            return plot.Top + (float)(ratio * plot.Height);
+        }
+
+        private static void DrawPoint(Graphics graphics, float x, float y, Color color)
+        {
+            using (SolidBrush brush = new SolidBrush(color))
+            using (Pen border = new Pen(Color.White, 1.4F))
+            {
+                RectangleF rect = new RectangleF(x - 4F, y - 4F, 8F, 8F);
+                graphics.FillEllipse(brush, rect);
+                graphics.DrawEllipse(border, rect);
+            }
+        }
+
+        private static string FormatCompactMoney(decimal value)
+        {
+            decimal abs = Math.Abs(value);
+            if (abs >= 10000M)
+            {
+                return (value / 10000M).ToString("0.#") + "万";
+            }
+
+            return value.ToString("0.##");
         }
     }
 }

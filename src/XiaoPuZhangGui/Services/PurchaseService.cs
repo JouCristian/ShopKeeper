@@ -51,6 +51,21 @@ namespace XiaoPuZhangGui.Services
             return true;
         }
 
+        public bool TryDelete(long id, out string message)
+        {
+            try
+            {
+                _purchaseRepository.Delete(id);
+                message = "入库单已删除，库存已同步扣回。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
+        }
+
         public bool HasExpiryWarning(PurchaseRecord record)
         {
             foreach (PurchaseItem item in record.Items)

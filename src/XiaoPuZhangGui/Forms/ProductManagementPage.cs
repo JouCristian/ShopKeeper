@@ -26,20 +26,13 @@ namespace XiaoPuZhangGui.Forms
             _bindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
+            BackColor = UiTheme.PageBackground;
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
 
-            Label titleLabel = new Label
-            {
-                AutoSize = false,
-                Dock = DockStyle.Top,
-                Height = 72,
-                Text = "商品管理",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(28, 0, 0, 0)
-            };
+            Panel headerPanel = UiComponentHelper.CreatePageHeader(
+                "商品管理",
+                "维护商品档案、分类、库存预警和保质期信息",
+                "headers/product");
 
             Panel contentPanel = new Panel
             {
@@ -85,13 +78,13 @@ namespace XiaoPuZhangGui.Forms
             _statusComboBox.Items.Add("停用");
             _statusComboBox.SelectedIndex = 0;
 
-            Button searchButton = CreateButton("查询", Color.FromArgb(0, 123, 255));
+            Button searchButton = CreateButton("查询", UiTheme.PrimaryBlue);
             searchButton.Click += delegate { LoadProducts(); };
 
-            Button addButton = CreateButton("新增商品", Color.FromArgb(40, 167, 69));
+            Button addButton = CreateButton("新增商品", UiTheme.SuccessGreen);
             addButton.Click += AddButton_Click;
 
-            Button categoryButton = CreateButton("分类管理", Color.FromArgb(108, 117, 125));
+            Button categoryButton = CreateButton("分类管理", UiTheme.MutedGray);
             categoryButton.Click += CategoryButton_Click;
 
             filters.Controls.Add(CreateFilterLabel("名称/条码"));
@@ -103,6 +96,7 @@ namespace XiaoPuZhangGui.Forms
             filters.Controls.Add(searchButton);
             filters.Controls.Add(addButton);
             filters.Controls.Add(categoryButton);
+            UiComponentHelper.NormalizeFilterBar(filters);
 
             _grid = new DataGridView
             {
@@ -121,7 +115,7 @@ namespace XiaoPuZhangGui.Forms
             _grid.CellContentClick += Grid_CellContentClick;
             _grid.CellDoubleClick += Grid_CellDoubleClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
-            _emptyLabel = UiStyleHelper.CreateEmptyLabel("暂无商品，请先新增商品。");
+            _emptyLabel = UiComponentHelper.CreateEmptyStateLabel("暂无商品，请先新增商品。", "empty/product");
 
             BuildColumns();
 
@@ -129,7 +123,7 @@ namespace XiaoPuZhangGui.Forms
             contentPanel.Controls.Add(_emptyLabel);
             contentPanel.Controls.Add(filters);
             Controls.Add(contentPanel);
-            Controls.Add(titleLabel);
+            Controls.Add(headerPanel);
 
             LoadCategories();
             LoadProducts();
@@ -167,6 +161,74 @@ namespace XiaoPuZhangGui.Forms
                 Width = 70
             };
             _grid.Columns.Add(statusColumn);
+
+            _grid.Columns.Add(new DataGridViewButtonColumn
+            {
+                Name = "DeleteColumn",
+                HeaderText = "删除",
+                Text = "删除",
+                Width = 70,
+                UseColumnTextForButtonValue = true
+            });
+
+            ApplyProductGridColumnLayout();
+        }
+
+        private void ApplyProductGridColumnLayout()
+        {
+            SetDataColumnLayout("Name", 1.35F, 150);
+            SetDataColumnLayout("CategoryName", 0.8F, 86);
+            SetDataColumnLayout("Barcode", 0.9F, 96);
+            SetDataColumnLayout("Specification", 0.85F, 92);
+            SetDataColumnLayout("DefaultPrice", 0.9F, 100);
+            SetDataColumnLayout("CurrentStock", 1.05F, 118);
+            SetDataColumnLayout("AverageCost", 1.05F, 118);
+            SetDataColumnLayout("MinStockAlert", 1.05F, 118);
+            SetDataColumnLayout("RequiresExpiryText", 0.78F, 88);
+            SetDataColumnLayout("ExpiryDateText", 0.95F, 108);
+            SetDataColumnLayout("Status", 0.78F, 88);
+            SetButtonColumnLayout("EditColumn", 70);
+            SetButtonColumnLayout("StatusColumn", 70);
+            SetButtonColumnLayout("DeleteColumn", 70);
+        }
+
+        private void SetDataColumnLayout(string propertyName, float fillWeight, int minimumWidth)
+        {
+            DataGridViewColumn column = FindColumnByProperty(propertyName);
+            if (column == null)
+            {
+                return;
+            }
+
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            column.FillWeight = fillWeight;
+            column.MinimumWidth = minimumWidth;
+        }
+
+        private void SetButtonColumnLayout(string columnName, int width)
+        {
+            if (!_grid.Columns.Contains(columnName))
+            {
+                return;
+            }
+
+            DataGridViewColumn column = _grid.Columns[columnName];
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            column.Width = width;
+            column.MinimumWidth = width;
+        }
+
+        private DataGridViewColumn FindColumnByProperty(string propertyName)
+        {
+            foreach (DataGridViewColumn column in _grid.Columns)
+            {
+                if (column.DataPropertyName == propertyName)
+                {
+                    return column;
+                }
+            }
+
+            return null;
         }
 
         private void LoadCategories()
@@ -239,6 +301,10 @@ namespace XiaoPuZhangGui.Forms
             {
                 ToggleProductStatus(e.RowIndex);
             }
+            else if (columnName == "DeleteColumn")
+            {
+                DeleteProduct(e.RowIndex);
+            }
         }
 
         private void EditSelectedProduct(int rowIndex)
@@ -284,6 +350,37 @@ namespace XiaoPuZhangGui.Forms
             LoadProducts();
         }
 
+        private void DeleteProduct(int rowIndex)
+        {
+            Product product = _grid.Rows[rowIndex].DataBoundItem as Product;
+            if (product == null)
+            {
+                return;
+            }
+
+            DialogResult result = MessageBox.Show(
+                "确认删除商品「" + product.Name + "」吗？\r\n\r\n只有没有任何业务记录的商品可以删除；已有销售、进货、盘点、报废或库存批次的商品请使用停用。",
+                "删除商品",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            string message;
+            if (!_productService.TryDelete(product.Id, out message))
+            {
+                MessageBox.Show(message, "无法删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(message, "删除成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadProducts();
+        }
+
         private void SearchTextBox_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Enter)
@@ -321,7 +418,7 @@ namespace XiaoPuZhangGui.Forms
             return new Label
             {
                 Text = text,
-                Width = 72,
+                Width = text == "名称/条码" ? 96 : 72,
                 Height = 32,
                 Margin = new Padding(0, 22, 6, 0),
                 TextAlign = ContentAlignment.MiddleLeft
@@ -339,7 +436,8 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold),
+                UseVisualStyleBackColor = false
             };
             button.FlatAppearance.BorderSize = 0;
             return button;

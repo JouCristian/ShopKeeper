@@ -58,8 +58,8 @@ namespace XiaoPuZhangGui.Forms
             _profitRankBindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
+            BackColor = UiTheme.PageBackground;
+            Font = UiTheme.Font(11F);
 
             Controls.Add(BuildContentPanel());
             Controls.Add(BuildHeaderPanel());
@@ -72,9 +72,9 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 104,
-                BackColor = Color.White,
-                Padding = new Padding(28, 12, 24, 12)
+                Height = 176,
+                BackColor = UiTheme.CardBackground,
+                Padding = new Padding(28, 14, 28, 14)
             };
 
             TableLayoutPanel headerLayout = new TableLayoutPanel
@@ -82,40 +82,48 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 3,
                 RowCount = 1,
-                BackColor = Color.White
+                BackColor = UiTheme.CardBackground
             };
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 122F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 198F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430F));
             headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             Panel textPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White
+                BackColor = UiTheme.CardBackground
             };
 
-            Button refreshButton = new Button
+            Panel actionPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Text = "刷新",
-                BackColor = Color.FromArgb(0, 123, 255),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
-                Cursor = Cursors.Hand,
-                Margin = new Padding(0, 16, 14, 16)
+                BackColor = UiTheme.CardBackground,
+                Margin = new Padding(0, 0, 16, 0)
             };
-            refreshButton.FlatAppearance.BorderSize = 0;
+
+            Button refreshButton = UiComponentHelper.CreatePrimaryButton("刷新", 128);
+            refreshButton.Size = new Size(128, 52);
+            refreshButton.Margin = Padding.Empty;
+            refreshButton.Tag = "KeepSize";
+            UiAssetHelper.ApplyIcon(refreshButton, "action_refresh", 18, Color.White);
+            UiComponentHelper.CenterButtonIcon(refreshButton);
             refreshButton.Click += delegate { LoadDashboard(); };
+            actionPanel.Controls.Add(refreshButton);
+            actionPanel.Resize += delegate
+            {
+                refreshButton.Location = new Point(
+                    Math.Max(0, (actionPanel.ClientSize.Width - refreshButton.Width) / 2),
+                    Math.Max(0, (actionPanel.ClientSize.Height - refreshButton.Height) / 2));
+            };
 
             _titleLabel = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 38,
+                Height = 52,
                 Text = GetStoreName() + " · 首页看板",
-                Font = new Font("Microsoft YaHei UI", 21F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(28F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true
             };
@@ -125,24 +133,24 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Top,
                 Height = 26,
                 Text = string.Empty,
-                Font = new Font("Microsoft YaHei UI", 10.5F),
-                ForeColor = Color.FromArgb(73, 80, 87),
+                Font = UiTheme.Font(10.5F),
+                ForeColor = UiTheme.TextSecondary,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
             PictureBox heroBox = new PictureBox
             {
                 Dock = DockStyle.Fill,
-                Image = UiAssetHelper.GetIllustration("shop_hero", new Size(480, 200)),
+                Image = UiAssetHelper.GetIllustration("dashboard_hero", new Size(860, 360)),
                 SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.White,
-                Margin = new Padding(8, 0, 0, 0)
+                BackColor = UiTheme.CardBackground,
+                Margin = new Padding(12, 0, 0, 0)
             };
 
             textPanel.Controls.Add(_subtitleLabel);
             textPanel.Controls.Add(_titleLabel);
             headerLayout.Controls.Add(textPanel, 0, 0);
-            headerLayout.Controls.Add(refreshButton, 1, 0);
+            headerLayout.Controls.Add(actionPanel, 1, 0);
             headerLayout.Controls.Add(heroBox, 2, 0);
             panel.Controls.Add(headerLayout);
             return panel;
@@ -163,7 +171,7 @@ namespace XiaoPuZhangGui.Forms
                 Height = 34,
                 Visible = false,
                 ForeColor = Color.FromArgb(176, 42, 55),
-                BackColor = Color.FromArgb(248, 215, 218),
+                BackColor = UiTheme.SoftRed,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(12, 0, 12, 0)
             };
@@ -171,7 +179,7 @@ namespace XiaoPuZhangGui.Forms
             TabControl tabs = new TabControl
             {
                 Dock = DockStyle.Fill,
-                Font = new Font("Microsoft YaHei UI", 10.5F)
+                Font = UiTheme.Font(10.5F)
             };
             tabs.TabPages.Add(BuildOverviewTab());
             tabs.TabPages.Add(BuildReminderTab());
@@ -186,19 +194,18 @@ namespace XiaoPuZhangGui.Forms
         {
             TabPage tab = new TabPage("经营概览")
             {
-                AutoScroll = true
+                AutoScroll = false
             };
             TableLayoutPanel layout = new TableLayoutPanel
             {
-                Dock = DockStyle.Top,
-                Height = 620,
+                Dock = DockStyle.Fill,
                 ColumnCount = 1,
                 RowCount = 2,
-                BackColor = Color.FromArgb(248, 249, 250),
+                BackColor = UiTheme.PageBackground,
                 Padding = new Padding(6)
             };
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 70F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 64F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 36F));
 
             layout.Controls.Add(BuildMetricGrid(), 0, 0);
             layout.Controls.Add(BuildQuickActionPanel(), 0, 1);
@@ -213,7 +220,7 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 4,
                 RowCount = 3,
-                BackColor = Color.FromArgb(248, 249, 250),
+                BackColor = UiTheme.PageBackground,
                 Padding = new Padding(0, 4, 0, 4)
             };
 
@@ -257,8 +264,8 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
-                Padding = new Padding(16, 12, 16, 12)
+                BackColor = UiTheme.CardBackground,
+                Padding = new Padding(20, 16, 20, 16)
             };
 
             Label titleLabel = new Label
@@ -266,28 +273,93 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Top,
                 Height = 28,
                 Text = "快捷入口",
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            FlowLayoutPanel buttons = new FlowLayoutPanel
+            TableLayoutPanel buttons = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.LeftToRight,
-                WrapContents = true,
-                BackColor = Color.White
+                ColumnCount = 3,
+                RowCount = 2,
+                BackColor = UiTheme.CardBackground,
+                Padding = new Padding(0, 8, 16, 0)
+            };
+            for (int column = 0; column < 3; column++)
+            {
+                buttons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+            }
+
+            buttons.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            buttons.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+
+            buttons.Controls.Add(CreateQuickButton("销售记账"), 0, 0);
+            buttons.Controls.Add(CreateQuickButton("商品管理"), 1, 0);
+            buttons.Controls.Add(CreateQuickButton("进货入库"), 2, 0);
+            buttons.Controls.Add(CreateQuickButton("库存盘点"), 0, 1);
+            buttons.Controls.Add(CreateQuickButton("赊账管理"), 1, 1);
+            buttons.Controls.Add(CreateQuickButton("经营报表"), 2, 1);
+
+            TableLayoutPanel body = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+                BackColor = UiTheme.CardBackground
+            };
+            body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430F));
+            body.Controls.Add(buttons, 0, 0);
+            body.Controls.Add(CreateManagerTipPanel(), 1, 0);
+
+            panel.Controls.Add(body);
+            panel.Controls.Add(titleLabel);
+            return panel;
+        }
+
+        private Panel CreateManagerTipPanel()
+        {
+            Panel panel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(248, 251, 255),
+                Padding = new Padding(12),
+                Margin = new Padding(12, 0, 0, 0)
             };
 
-            buttons.Controls.Add(CreateQuickButton("销售记账"));
-            buttons.Controls.Add(CreateQuickButton("商品管理"));
-            buttons.Controls.Add(CreateQuickButton("进货入库"));
-            buttons.Controls.Add(CreateQuickButton("库存盘点"));
-            buttons.Controls.Add(CreateQuickButton("赊账管理"));
-            buttons.Controls.Add(CreateQuickButton("经营报表"));
+            PictureBox picture = new PictureBox
+            {
+                Dock = DockStyle.Right,
+                Width = 200,
+                Image = UiAssetHelper.GetIllustration("dashboard/advice", new Size(280, 180)),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = panel.BackColor
+            };
 
-            panel.Controls.Add(buttons);
-            panel.Controls.Add(titleLabel);
+            Label title = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 34,
+                Text = "掌柜提示",
+                Font = UiTheme.Font(13F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            Label text = new Label
+            {
+                Dock = DockStyle.Fill,
+                Text = "关注低库存、临期商品和未结清赊账，今天的经营更稳。",
+                Font = UiTheme.Font(11F),
+                ForeColor = UiTheme.TextSecondary,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(0, 8, 16, 0)
+            };
+
+            panel.Controls.Add(text);
+            panel.Controls.Add(title);
+            panel.Controls.Add(picture);
             return panel;
         }
 
@@ -299,7 +371,7 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 3,
                 RowCount = 1,
-                BackColor = Color.FromArgb(248, 249, 250),
+                BackColor = UiTheme.PageBackground,
                 Padding = new Padding(8)
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3F));
@@ -346,7 +418,7 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 ColumnCount = 2,
                 RowCount = 1,
-                BackColor = Color.FromArgb(248, 249, 250),
+                BackColor = UiTheme.PageBackground,
                 Padding = new Padding(8)
             };
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -376,33 +448,27 @@ namespace XiaoPuZhangGui.Forms
 
         private Panel CreateMetricCard(string title, Label valueLabel)
         {
-            Panel panel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(6),
-                Padding = new Padding(14, 12, 14, 12),
-                BackColor = Color.White,
-                BorderStyle = BorderStyle.FixedSingle
-            };
+            Color metricColor = ResolveMetricColor(title);
+            Color backgroundColor = ResolveMetricBackground(title);
+            Panel panel = UiComponentHelper.CreateCardPanel(
+                new Padding(16, 14, 16, 14),
+                backgroundColor,
+                ResolveMetricBorder(title));
+            panel.Dock = DockStyle.Fill;
+            panel.Margin = new Padding(6);
 
-            Label titleLabel = new Label
-            {
-                Dock = DockStyle.Top,
-                Height = 28,
-                Text = title,
-                Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(73, 80, 87),
-                TextAlign = ContentAlignment.MiddleLeft
-            };
+            Label titleLabel = UiComponentHelper.CreateIconTextLabel(title, ResolveMetricIcon(title), 18, metricColor);
+            titleLabel.Dock = DockStyle.Top;
+            titleLabel.Height = 32;
+            titleLabel.ForeColor = UiTheme.TextSecondary;
+            titleLabel.Font = UiTheme.Font(10.5F, FontStyle.Bold);
+            titleLabel.TextAlign = ContentAlignment.MiddleLeft;
+            titleLabel.AutoEllipsis = true;
+            titleLabel.BackColor = backgroundColor;
+            valueLabel.BackColor = backgroundColor;
 
             panel.Controls.Add(valueLabel);
             panel.Controls.Add(titleLabel);
-            panel.Controls.Add(new Panel
-            {
-                Dock = DockStyle.Left,
-                Width = 4,
-                BackColor = ResolveMetricAccent(title)
-            });
             return panel;
         }
 
@@ -412,8 +478,8 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Fill,
                 Text = "0.00",
-                Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(25F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true
             };
@@ -424,21 +490,25 @@ namespace XiaoPuZhangGui.Forms
             Button button = new Button
             {
                 Text = title,
-                Width = 126,
-                Height = 42,
-                Margin = new Padding(0, 10, 12, 0),
-                BackColor = Color.FromArgb(248, 249, 250),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 8, 14, 8),
+                BackColor = UiTheme.CardBackground,
+                ForeColor = UiTheme.TextPrimary,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold),
-                Cursor = Cursors.Hand
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                Cursor = Cursors.Hand,
+                Tag = "KeepSize"
             };
-            button.FlatAppearance.BorderColor = Color.FromArgb(206, 212, 218);
+            button.FlatAppearance.BorderColor = UiTheme.CardBorder;
+            UiComponentHelper.ApplyButtonChrome(button, UiTheme.CardBackground, UiTheme.CardBorder);
             string iconName = ResolveQuickActionIconName(title);
             if (!string.IsNullOrEmpty(iconName))
             {
-                UiAssetHelper.ApplyIcon(button, iconName, 18, Color.FromArgb(0, 123, 255));
-                button.Padding = new Padding(8, 0, 0, 0);
+                UiAssetHelper.ApplyIcon(button, "nav_" + ResolveNavigationIconKey(iconName), 24, UiTheme.PrimaryBlue);
+                button.Padding = new Padding(10, 0, 10, 0);
+                button.TextImageRelation = TextImageRelation.ImageBeforeText;
+                button.ImageAlign = ContentAlignment.MiddleCenter;
+                button.TextAlign = ContentAlignment.MiddleCenter;
             }
 
             button.Click += delegate
@@ -493,14 +563,11 @@ namespace XiaoPuZhangGui.Forms
 
         private Panel CreateSection(Label titleLabel, DataGridView grid, Label emptyLabel)
         {
-            Panel panel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Margin = new Padding(6),
-                BackColor = Color.White,
-                Padding = new Padding(12),
-                BorderStyle = BorderStyle.FixedSingle
-            };
+            Color backgroundColor = ResolveSectionBackground(titleLabel.Text);
+            Panel panel = UiComponentHelper.CreateCardPanel(new Padding(12), backgroundColor, ResolveSectionBorder(titleLabel.Text));
+            panel.Dock = DockStyle.Fill;
+            panel.Margin = new Padding(6);
+            titleLabel.BackColor = backgroundColor;
 
             panel.Controls.Add(grid);
             panel.Controls.Add(emptyLabel);
@@ -515,42 +582,145 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Top,
                 Height = 32,
                 Text = title,
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft
             };
         }
 
         private Label CreateEmptyLabel(string text)
         {
-            return new Label
-            {
-                Dock = DockStyle.Bottom,
-                Height = 36,
-                Text = text,
-                Visible = false,
-                Font = new Font("Microsoft YaHei UI", 10F),
-                ForeColor = Color.FromArgb(108, 117, 125),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Image = UiAssetHelper.GetIcon("empty_box", 22),
-                ImageAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(40, 0, 0, 0)
-            };
+            return UiComponentHelper.CreateEmptyStateLabel(text, "empty/dashboard");
         }
 
-        private static Color ResolveMetricAccent(string title)
+        private static Color ResolveMetricColor(string title)
         {
+            if (title.Contains("报废"))
+            {
+                return Color.FromArgb(198, 40, 40);
+            }
+
+            if (title.Contains("赊账"))
+            {
+                return Color.FromArgb(191, 79, 0);
+            }
+
             if (title.Contains("实收") || title.Contains("毛利润") || title.Contains("净利润"))
             {
-                return Color.FromArgb(0, 123, 255);
+                return Color.FromArgb(13, 122, 66);
             }
 
-            if (title.Contains("赊账") || title.Contains("报废"))
+            if (title.Contains("成本"))
             {
-                return Color.FromArgb(255, 193, 7);
+                return Color.FromArgb(8, 112, 145);
             }
 
-            return Color.FromArgb(206, 212, 218);
+            if (title.Contains("单数") || title.Contains("件数"))
+            {
+                return Color.FromArgb(37, 99, 235);
+            }
+
+            return Color.FromArgb(25, 103, 210);
+        }
+
+        private static Color ResolveMetricBackground(string title)
+        {
+            if (title.Contains("报废"))
+            {
+                return UiTheme.SoftRed;
+            }
+
+            if (title.Contains("赊账"))
+            {
+                return UiTheme.SoftOrange;
+            }
+
+            if (title.Contains("实收") || title.Contains("毛利润") || title.Contains("净利润"))
+            {
+                return UiTheme.SoftGreen;
+            }
+
+            if (title.Contains("成本"))
+            {
+                return UiTheme.SoftCyan;
+            }
+
+            return UiTheme.CardBackground;
+        }
+
+        private static Color ResolveMetricBorder(string title)
+        {
+            if (title.Contains("报废"))
+            {
+                return UiTheme.DangerBorder;
+            }
+
+            if (title.Contains("赊账"))
+            {
+                return UiTheme.WarningBorder;
+            }
+
+            if (title.Contains("实收") || title.Contains("毛利润") || title.Contains("净利润"))
+            {
+                return UiTheme.SuccessBorder;
+            }
+
+            if (title.Contains("成本"))
+            {
+                return UiTheme.InfoBorder;
+            }
+
+            return UiTheme.CardBorder;
+        }
+
+        private static Color ResolveSectionBackground(string title)
+        {
+            if (title.Contains("低库存") || title.Contains("临期") || title.Contains("过期") || title.Contains("赊账"))
+            {
+                return UiTheme.SoftOrange;
+            }
+
+            return UiTheme.CardBackground;
+        }
+
+        private static Color ResolveSectionBorder(string title)
+        {
+            if (title.Contains("低库存") || title.Contains("临期") || title.Contains("过期") || title.Contains("赊账"))
+            {
+                return UiTheme.WarningBorder;
+            }
+
+            return UiTheme.CardBorder;
+        }
+
+        private static string ResolveMetricIcon(string title)
+        {
+            if (title.Contains("销售") || title.Contains("实收") || title.Contains("应收"))
+            {
+                return "nav_sales";
+            }
+
+            if (title.Contains("赊账"))
+            {
+                return "nav_credit";
+            }
+
+            if (title.Contains("成本") || title.Contains("利润"))
+            {
+                return "nav_report";
+            }
+
+            if (title.Contains("报废"))
+            {
+                return "warning_stock";
+            }
+
+            return "nav_dashboard";
+        }
+
+        private static string ResolveNavigationIconKey(string iconName)
+        {
+            return iconName == "home" ? "dashboard" : iconName;
         }
 
         private DataGridView CreateGrid()

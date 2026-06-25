@@ -182,6 +182,48 @@ ORDER BY id ASC;";
             }
         }
 
+        public void Delete(long id)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        IList<PurchaseItem> items = GetItems(connection, transaction, id);
+                        if (items.Count == 0 && !Exists(connection, transaction, id))
+                        {
+                            throw new InvalidOperationException("入库单不存在或已被删除。");
+                        }
+
+                        foreach (PurchaseItem item in items)
+                        {
+                            EnsurePurchaseBatchUnused(connection, transaction, item.Id);
+                            EnsureEnoughStockToReverse(connection, transaction, item.ProductId, item.Quantity);
+                        }
+
+                        foreach (PurchaseItem item in items)
+                        {
+                            DeletePurchaseBatches(connection, transaction, item.Id);
+                            ReverseProductStockAndCost(connection, transaction, item);
+                        }
+
+                        DeleteItems(connection, transaction, id);
+                        DeleteRecord(connection, transaction, id);
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         private static long InsertRecord(SQLiteConnection connection, SQLiteTransaction transaction, PurchaseRecord record)
         {
             using (SQLiteCommand command = connection.CreateCommand())
@@ -228,6 +270,216 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@remark", EmptyToDbNull(item.Remark));
                 command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 return (long)command.ExecuteScalar();
+            }
+        }
+
+        private static bool Exists(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT COUNT(1) FROM purchase_records WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                return Convert.ToInt32(command.ExecuteScalar()) > 0;
+            }
+        }
+
+        private static IList<PurchaseItem> GetItems(SQLiteConnection connection, SQLiteTransaction transaction, long purchaseRecordId)
+        {
+            List<PurchaseItem> items = new List<PurchaseItem>();
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT id, purchase_record_id, product_id, product_name_snapshot, quantity, purchase_price,
+       line_total, production_date, expiry_date, remark, created_at, updated_at
+FROM purchase_items
+WHERE purchase_record_id = @purchase_record_id
+ORDER BY id ASC;";
+                command.Parameters.AddWithValue("@purchase_record_id", purchaseRecordId);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        items.Add(ReadItem(reader));
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        private static void EnsurePurchaseBatchUnused(SQLiteConnection connection, SQLiteTransaction transaction, long purchaseItemId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT COUNT(1)
+FROM stock_batches
+WHERE source_type = 'Purchase'
+  AND source_id = @source_id
+  AND quantity_remaining < quantity_in;";
+                command.Parameters.AddWithValue("@source_id", purchaseItemId);
+
+                if (Convert.ToInt32(command.ExecuteScalar()) > 0)
+                {
+                    throw new InvalidOperationException("该入库单的部分库存已经被后续业务消耗，不能直接删除。");
+                }
+            }
+        }
+
+        private static void EnsureEnoughStockToReverse(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal quantity)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT current_stock FROM products WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+
+                object value = command.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                {
+                    throw new InvalidOperationException("入库单关联的商品不存在，不能删除。");
+                }
+
+                decimal currentStock = Convert.ToDecimal(value);
+                if (currentStock < quantity)
+                {
+                    throw new InvalidOperationException("当前库存少于本次入库数量，不能删除该入库单。");
+                }
+            }
+        }
+
+        private static void DeletePurchaseBatches(SQLiteConnection connection, SQLiteTransaction transaction, long purchaseItemId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM stock_batches WHERE source_type = 'Purchase' AND source_id = @source_id;";
+                command.Parameters.AddWithValue("@source_id", purchaseItemId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DecreaseProductStock(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal quantity)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE products
+SET current_stock = current_stock - @quantity,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+                command.Parameters.AddWithValue("@quantity", quantity);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void ReverseProductStockAndCost(SQLiteConnection connection, SQLiteTransaction transaction, PurchaseItem item)
+        {
+            decimal currentStock;
+            decimal averageCost;
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT current_stock, average_cost FROM products WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", item.ProductId);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    if (!reader.Read())
+                    {
+                        throw new InvalidOperationException("入库单关联的商品不存在，不能删除。");
+                    }
+
+                    currentStock = Convert.ToDecimal(reader.GetValue(0));
+                    averageCost = Convert.ToDecimal(reader.GetValue(1));
+                }
+            }
+
+            decimal newStock = currentStock - item.Quantity;
+            decimal newAverageCost = 0;
+            if (newStock > 0)
+            {
+                decimal remainingCost = (currentStock * averageCost) - (item.Quantity * item.PurchasePrice);
+                newAverageCost = remainingCost > 0 ? remainingCost / newStock : 0;
+            }
+
+            UpdateProductStock(connection, transaction, item.ProductId, newStock, newAverageCost);
+        }
+
+        private static void RecalculateAverageCost(SQLiteConnection connection, SQLiteTransaction transaction, long productId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT IFNULL(SUM(quantity_remaining * purchase_price), 0),
+       IFNULL(SUM(quantity_remaining), 0)
+FROM stock_batches
+WHERE product_id = @product_id
+  AND quantity_remaining > 0;";
+                command.Parameters.AddWithValue("@product_id", productId);
+
+                decimal totalCost = 0;
+                decimal totalQuantity = 0;
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        totalCost = Convert.ToDecimal(reader.GetValue(0));
+                        totalQuantity = Convert.ToDecimal(reader.GetValue(1));
+                    }
+                }
+
+                decimal averageCost = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+                UpdateAverageCost(connection, transaction, productId, averageCost);
+            }
+        }
+
+        private static void UpdateAverageCost(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal averageCost)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE products
+SET average_cost = @average_cost,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+                command.Parameters.AddWithValue("@average_cost", averageCost);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteItems(SQLiteConnection connection, SQLiteTransaction transaction, long purchaseRecordId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM purchase_items WHERE purchase_record_id = @purchase_record_id;";
+                command.Parameters.AddWithValue("@purchase_record_id", purchaseRecordId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteRecord(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM purchase_records WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                command.ExecuteNonQuery();
             }
         }
 

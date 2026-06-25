@@ -11,25 +11,56 @@ namespace XiaoPuZhangGui.Utils
             grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
             grid.AllowUserToResizeRows = false;
             grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
-            grid.GridColor = Color.FromArgb(233, 236, 239);
+            grid.GridColor = UiTheme.CardBorder;
             grid.StandardTab = true;
             grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.ColumnHeadersHeight = 44;
-            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold);
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(232, 244, 255);
-            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(33, 37, 41);
+            grid.ColumnHeadersHeight = UiTheme.GridHeaderHeight;
+            grid.ColumnHeadersDefaultCellStyle.Font = UiTheme.Font(10F, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.BackColor = UiTheme.SoftBlue;
+            grid.ColumnHeadersDefaultCellStyle.ForeColor = UiTheme.TextPrimary;
             grid.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(6, 6, 6, 6);
-            grid.DefaultCellStyle.Font = new Font("Microsoft YaHei UI", 10.5F);
-            grid.DefaultCellStyle.ForeColor = Color.FromArgb(33, 37, 41);
+            grid.DefaultCellStyle.Font = UiTheme.Font(10F);
+            grid.DefaultCellStyle.ForeColor = UiTheme.TextPrimary;
             grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(219, 234, 254);
-            grid.DefaultCellStyle.SelectionForeColor = Color.FromArgb(33, 37, 41);
+            grid.DefaultCellStyle.SelectionForeColor = UiTheme.TextPrimary;
+            grid.DefaultCellStyle.Padding = new Padding(6, 2, 6, 2);
             grid.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(250, 251, 252);
-            grid.RowTemplate.Height = 36;
-            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
+            grid.RowTemplate.Height = UiTheme.GridRowHeight;
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            grid.ColumnAdded -= Grid_ColumnAdded;
+            grid.ColumnAdded += Grid_ColumnAdded;
+            foreach (DataGridViewColumn column in grid.Columns)
+            {
+                ConfigureColumn(column);
+            }
+
             grid.CellFormatting -= UiStatusStyleHelper.ApplyStatusCellStyle;
             grid.CellFormatting += UiStatusStyleHelper.ApplyStatusCellStyle;
+        }
+
+        private static void Grid_ColumnAdded(object sender, DataGridViewColumnEventArgs e)
+        {
+            ConfigureColumn(e.Column);
+        }
+
+        private static void ConfigureColumn(DataGridViewColumn column)
+        {
+            if (column == null)
+            {
+                return;
+            }
+
+            if (column is DataGridViewButtonColumn)
+            {
+                column.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+                column.MinimumWidth = column.Width > 0 ? column.Width : 70;
+                return;
+            }
+
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            column.FillWeight = column.Width > 0 ? column.Width : 100;
         }
 
         public static void FillLastColumn(DataGridView grid)

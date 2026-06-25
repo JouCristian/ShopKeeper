@@ -49,6 +49,21 @@ namespace XiaoPuZhangGui.Services
             return true;
         }
 
+        public bool TryDelete(long id, out string message)
+        {
+            try
+            {
+                _scrapRepository.Delete(id);
+                message = "报废记录已删除，库存已同步恢复。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
+        }
+
         private static void Normalize(ScrapRecord record)
         {
             if (record.ScrapDate == DateTime.MinValue)

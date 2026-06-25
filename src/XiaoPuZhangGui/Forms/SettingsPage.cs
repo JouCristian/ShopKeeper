@@ -27,8 +27,8 @@ namespace XiaoPuZhangGui.Forms
             _backupService = new BackupService();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
+            BackColor = UiTheme.PageBackground;
+            Font = UiTheme.Font(11F);
 
             Label titleLabel = new Label
             {
@@ -36,8 +36,8 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Top,
                 Height = 72,
                 Text = "系统设置",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(22F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 Padding = new Padding(28, 0, 0, 0)
             };
@@ -56,14 +56,14 @@ namespace XiaoPuZhangGui.Forms
                 ColumnCount = 2,
                 RowCount = 7,
                 Height = 330,
-                BackColor = Color.White,
+                BackColor = UiTheme.CardBackground,
                 Padding = new Padding(24),
                 CellBorderStyle = TableLayoutPanelCellBorderStyle.None
             };
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            _storeNameTextBox = new TextBox { Dock = DockStyle.Fill, Font = new Font("Microsoft YaHei UI", 12F) };
+            _storeNameTextBox = new TextBox { Dock = DockStyle.Fill, Font = UiTheme.Font(12F) };
             _databasePathLabel = CreateValueLabel();
             _configPathLabel = CreateValueLabel();
             _backupPathLabel = CreateValueLabel();
@@ -81,17 +81,19 @@ namespace XiaoPuZhangGui.Forms
 
             FlowLayoutPanel actions = BuildActionPanel();
             Panel recentBackupPanel = BuildRecentBackupPanel();
+            Panel assetPanel = BuildAssetPanel();
 
             Label noteLabel = new Label
             {
                 Dock = DockStyle.Top,
                 Height = 54,
                 Text = "PIN 和恢复密钥不会明文显示。备份包包含本机经营数据，请妥善保存。",
-                ForeColor = Color.FromArgb(108, 117, 125),
+                ForeColor = UiTheme.MutedGray,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
             contentPanel.Controls.Add(noteLabel);
+            contentPanel.Controls.Add(assetPanel);
             contentPanel.Controls.Add(recentBackupPanel);
             contentPanel.Controls.Add(actions);
             contentPanel.Controls.Add(table);
@@ -104,26 +106,25 @@ namespace XiaoPuZhangGui.Forms
 
         private FlowLayoutPanel BuildActionPanel()
         {
-            Button saveButton = CreateActionButton("保存店铺名称", Color.FromArgb(0, 123, 255));
+            Button saveButton = CreateActionButton("保存店铺名称", UiTheme.PrimaryBlue);
             saveButton.Click += SaveButton_Click;
 
-            Button backupButton = CreateActionButton("立即备份", Color.FromArgb(40, 167, 69));
+            Button backupButton = CreateActionButton("立即备份", UiTheme.SuccessGreen);
             backupButton.Click += BackupButton_Click;
 
-            Button backupToButton = CreateActionButton("备份到其他位置", Color.FromArgb(23, 162, 184));
+            Button backupToButton = CreateActionButton("备份到其他位置", UiTheme.InfoCyan);
             backupToButton.Click += BackupToButton_Click;
 
-            Button restoreButton = CreateActionButton("从备份恢复", Color.FromArgb(255, 193, 7));
-            restoreButton.ForeColor = Color.FromArgb(33, 37, 41);
+            Button restoreButton = CreateActionButton("从备份恢复", UiTheme.WarningOrange);
             restoreButton.Click += RestoreButton_Click;
 
-            Button openBackupButton = CreateActionButton("打开备份目录", Color.FromArgb(108, 117, 125));
+            Button openBackupButton = CreateActionButton("打开备份目录", UiTheme.MutedGray);
             openBackupButton.Click += OpenBackupButton_Click;
 
-            Button openExportButton = CreateActionButton("打开导出目录", Color.FromArgb(108, 117, 125));
+            Button openExportButton = CreateActionButton("打开导出目录", UiTheme.MutedGray);
             openExportButton.Click += OpenExportButton_Click;
 
-            Button regenerateButton = CreateActionButton("重新生成恢复密钥", Color.FromArgb(220, 53, 69));
+            Button regenerateButton = CreateActionButton("重新生成恢复密钥", UiTheme.DangerRed);
             regenerateButton.Click += RegenerateButton_Click;
 
             FlowLayoutPanel actions = new FlowLayoutPanel
@@ -151,7 +152,7 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 190,
-                BackColor = Color.White,
+                BackColor = UiTheme.CardBackground,
                 Padding = new Padding(18, 12, 18, 14)
             };
 
@@ -160,19 +161,77 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Top,
                 Height = 30,
                 Text = "最近备份",
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
             _recentBackupListBox = new ListBox
             {
                 Dock = DockStyle.Fill,
-                Font = new Font("Microsoft YaHei UI", 10F),
+                Font = UiTheme.Font(10F),
                 IntegralHeight = false
             };
 
             panel.Controls.Add(_recentBackupListBox);
+            panel.Controls.Add(titleLabel);
+            return panel;
+        }
+
+        private Panel BuildAssetPanel()
+        {
+            Panel panel = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 154,
+                BackColor = UiTheme.CardBackground,
+                Padding = new Padding(18, 12, 18, 12)
+            };
+
+            Label titleLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 28,
+                Text = "界面资源",
+                Font = UiTheme.Font(12F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            Label descriptionLabel = new Label
+            {
+                Dock = DockStyle.Top,
+                Height = 44,
+                Text = "可将同名 PNG 图片放入自定义资源目录，用于替换首页插图、空状态插图和功能图标。建议小图标 24x24 或 32x32，首页插图 480x200。",
+                Font = UiTheme.Font(10F),
+                ForeColor = UiTheme.TextSecondary,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            FlowLayoutPanel actions = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = true,
+                BackColor = UiTheme.CardBackground,
+                Padding = new Padding(0, 10, 0, 0)
+            };
+
+            Button openAssetButton = UiComponentHelper.CreateSecondaryButton("打开自定义资源目录", 178);
+            openAssetButton.Click += OpenAssetButton_Click;
+
+            Button reloadAssetButton = UiComponentHelper.CreatePrimaryButton("刷新界面资源", 140);
+            reloadAssetButton.Click += ReloadAssetButton_Click;
+
+            Button namingButton = UiComponentHelper.CreateSecondaryButton("查看资源命名说明", 166);
+            namingButton.Click += NamingButton_Click;
+
+            actions.Controls.Add(openAssetButton);
+            actions.Controls.Add(reloadAssetButton);
+            actions.Controls.Add(namingButton);
+
+            panel.Controls.Add(actions);
+            panel.Controls.Add(descriptionLabel);
             panel.Controls.Add(titleLabel);
             return panel;
         }
@@ -304,6 +363,41 @@ namespace XiaoPuZhangGui.Forms
             OpenDirectory(AppPaths.ExportDirectory);
         }
 
+        private void OpenAssetButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                UiAssetHelper.OpenUserAssetDirectory();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开自定义资源目录失败：\r\n" + ex.Message, "界面资源", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        private void ReloadAssetButton_Click(object sender, EventArgs e)
+        {
+            UiAssetHelper.EnsureUserAssetDirectories();
+            UiAssetHelper.ReloadAssetCache();
+            MessageBox.Show("界面资源缓存已刷新。切换页面后会重新读取同名 PNG。", "界面资源", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void NamingButton_Click(object sender, EventArgs e)
+        {
+            const string guide =
+                "自定义资源目录支持直接放 PNG，也支持 icons/png 和 illustrations/png 子目录。\r\n" +
+                "新版插图建议按 headers、empty、dashboard、report 分区放置，方便查找和替换。\r\n\r\n" +
+                "首页/流程插图：dashboard_hero.png、login_hero.png、first_run_hero.png、recovery_key_hero.png。\r\n" +
+                "页头插图：headers/product.png、headers/sales.png、headers/purchase.png、headers/inventory.png、headers/credit.png。\r\n" +
+                "首页提示：dashboard/advice.png。报表页头：report/header.png。\r\n" +
+                "空状态：empty/product.png、empty/sales_cart.png、empty/sales_orders.png、empty/purchase.png、empty/inventory.png、empty/scrap.png、empty/credit.png、empty/report.png。\r\n" +
+                "导航图标：nav_dashboard.png、nav_sales.png、nav_product.png、nav_purchase.png、nav_inventory.png、nav_credit.png、nav_report.png、nav_settings.png。\r\n" +
+                "操作图标：action_add.png、action_search.png、action_save.png、action_export.png、action_backup.png、action_restore.png、action_refresh.png。\r\n\r\n" +
+                "小图标建议 24x24 或 32x32，插图建议 480x200。";
+
+            MessageBox.Show(guide, "资源命名说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private void RegenerateButton_Click(object sender, EventArgs e)
         {
             DialogResult result = MessageBox.Show(
@@ -351,7 +445,7 @@ namespace XiaoPuZhangGui.Forms
                 Text = labelText,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
-                ForeColor = Color.FromArgb(73, 80, 87)
+                ForeColor = UiTheme.TextSecondary
             };
 
             table.Controls.Add(label, 0, rowIndex);
@@ -365,7 +459,7 @@ namespace XiaoPuZhangGui.Forms
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
-                ForeColor = Color.FromArgb(33, 37, 41)
+                ForeColor = UiTheme.TextPrimary
             };
         }
 
@@ -379,12 +473,12 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold)
             };
             button.FlatAppearance.BorderSize = 0;
             if (text.Contains("备份"))
             {
-                Color iconColor = text.Contains("恢复") ? Color.FromArgb(33, 37, 41) : Color.White;
+                Color iconColor = Color.White;
                 UiAssetHelper.ApplyIcon(button, "backup", 18, iconColor);
                 button.Padding = new Padding(8, 0, 0, 0);
             }

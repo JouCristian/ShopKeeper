@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -19,58 +20,66 @@ namespace XiaoPuZhangGui.Forms
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(520, 420);
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
-            BackColor = Color.White;
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(680, 460);
+            Font = UiTheme.Font(11F);
+            BackColor = UiTheme.PageBackground;
 
             AppConfig config = AppConfigService.LoadOrCreateDefault();
+
+            Panel cardPanel = UiComponentHelper.CreateCardPanel(new Padding(26));
+            cardPanel.Location = new Point(24, 24);
+            cardPanel.Size = new Size(632, 412);
+
+            PictureBox heroBox = new PictureBox
+            {
+                Location = new Point(350, 25),
+                Size = new Size(260, 310),
+                Image = UiAssetHelper.GetIllustration("first_run_hero", new Size(500, 600)),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = UiTheme.CardBackground
+            };
 
             Label titleLabel = new Label
             {
                 Text = "欢迎使用小铺掌柜",
-                Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                Location = new Point(36, 28),
-                Size = new Size(440, 44)
+                Font = UiTheme.Font(22F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                Location = new Point(28, 24),
+                Size = new Size(330, 42)
             };
 
             Label noteLabel = new Label
             {
                 Text = "请先设置店铺名称和 6 位数字 PIN。所有信息仅保存在本机。",
-                ForeColor = Color.FromArgb(73, 80, 87),
-                Location = new Point(38, 80),
-                Size = new Size(430, 48)
+                Font = UiTheme.Font(10.5F),
+                ForeColor = UiTheme.TextSecondary,
+                Location = new Point(30, 72),
+                Size = new Size(320, 48)
             };
 
-            _storeNameTextBox = CreateTextBox(170);
+            _storeNameTextBox = CreateTextBox(160);
             _storeNameTextBox.Text = config.StoreName;
 
-            _pinTextBox = CreatePinTextBox(235);
-            _confirmPinTextBox = CreatePinTextBox(300);
+            _pinTextBox = CreatePinTextBox(228);
+            _confirmPinTextBox = CreatePinTextBox(296);
 
-            Controls.Add(titleLabel);
-            Controls.Add(noteLabel);
-            Controls.Add(CreateLabel("店铺名称", 145));
-            Controls.Add(_storeNameTextBox);
-            Controls.Add(CreateLabel("设置 6 位 PIN", 210));
-            Controls.Add(_pinTextBox);
-            Controls.Add(CreateLabel("再次确认 PIN", 275));
-            Controls.Add(_confirmPinTextBox);
+            cardPanel.Controls.Add(heroBox);
+            cardPanel.Controls.Add(titleLabel);
+            cardPanel.Controls.Add(noteLabel);
+            cardPanel.Controls.Add(CreateLabel("店铺名称", 132));
+            cardPanel.Controls.Add(_storeNameTextBox);
+            cardPanel.Controls.Add(CreateLabel("设置 6 位 PIN", 200));
+            cardPanel.Controls.Add(_pinTextBox);
+            cardPanel.Controls.Add(CreateLabel("再次确认 PIN", 268));
+            cardPanel.Controls.Add(_confirmPinTextBox);
 
-            Button initializeButton = new Button
-            {
-                Text = "完成初始化",
-                Location = new Point(300, 360),
-                Size = new Size(160, 42),
-                Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
-                BackColor = Color.FromArgb(0, 123, 255),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            initializeButton.FlatAppearance.BorderSize = 0;
+            Button initializeButton = UiComponentHelper.CreatePrimaryButton("完成初始化", 150);
+            initializeButton.Location = new Point(418, 344);
             initializeButton.Click += InitializeButton_Click;
 
-            Controls.Add(initializeButton);
+            cardPanel.Controls.Add(initializeButton);
+            Controls.Add(cardPanel);
             AcceptButton = initializeButton;
         }
 
@@ -109,9 +118,10 @@ namespace XiaoPuZhangGui.Forms
             return new Label
             {
                 Text = text,
-                Location = new Point(40, top),
+                Location = new Point(30, top),
                 Size = new Size(140, 30),
-                TextAlign = ContentAlignment.MiddleLeft
+                TextAlign = ContentAlignment.MiddleLeft,
+                ForeColor = UiTheme.TextSecondary
             };
         }
 
@@ -119,9 +129,9 @@ namespace XiaoPuZhangGui.Forms
         {
             return new TextBox
             {
-                Location = new Point(180, top),
-                Size = new Size(280, 30),
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Regular)
+                Location = new Point(30, top),
+                Size = new Size(300, 32),
+                Font = UiTheme.Font(12F)
             };
         }
 

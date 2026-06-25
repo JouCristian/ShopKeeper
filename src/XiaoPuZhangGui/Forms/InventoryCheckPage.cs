@@ -38,20 +38,13 @@ namespace XiaoPuZhangGui.Forms
             _scrapBindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
+            BackColor = UiTheme.PageBackground;
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
 
-            Label titleLabel = new Label
-            {
-                AutoSize = false,
-                Dock = DockStyle.Top,
-                Height = 72,
-                Text = "库存盘点",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(28, 0, 0, 0)
-            };
+            Panel headerPanel = UiComponentHelper.CreatePageHeader(
+                "库存盘点",
+                "新建盘点单、登记报废，及时修正库存差异",
+                "headers/inventory");
 
             TabControl tabs = new TabControl
             {
@@ -69,7 +62,7 @@ namespace XiaoPuZhangGui.Forms
             BuildScrapTab(scrapTab);
 
             Controls.Add(tabs);
-            Controls.Add(titleLabel);
+            Controls.Add(headerPanel);
 
             LoadCategories();
             LoadChecks();
@@ -89,7 +82,7 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = BackColor
             };
 
-            Button addButton = CreateButton("新建盘点单", Color.FromArgb(40, 167, 69), 120);
+            Button addButton = CreateButton("新建盘点单", UiTheme.SuccessGreen, 120);
             addButton.Click += AddButton_Click;
             _keywordTextBox = new TextBox { Width = 180, Font = new Font("Microsoft YaHei UI", 12F), Margin = new Padding(0, 20, 12, 0) };
             _keywordTextBox.KeyDown += KeywordTextBox_KeyDown;
@@ -100,7 +93,7 @@ namespace XiaoPuZhangGui.Forms
                 Font = new Font("Microsoft YaHei UI", 11F),
                 Margin = new Padding(0, 20, 12, 0)
             };
-            Button refreshButton = CreateButton("刷新", Color.FromArgb(0, 123, 255), 90);
+            Button refreshButton = CreateButton("刷新", UiTheme.PrimaryBlue, 90);
             refreshButton.Click += delegate { LoadChecks(); };
 
             filters.Controls.Add(addButton);
@@ -109,12 +102,13 @@ namespace XiaoPuZhangGui.Forms
             filters.Controls.Add(CreateFilterLabel("分类", 52));
             filters.Controls.Add(_categoryComboBox);
             filters.Controls.Add(refreshButton);
+            UiComponentHelper.NormalizeFilterBar(filters);
 
             _checkGrid = CreateGrid();
             _checkGrid.DataSource = _checkBindingSource;
             _checkGrid.CellContentClick += CheckGrid_CellContentClick;
             BuildCheckColumns();
-            _checkEmptyLabel = UiStyleHelper.CreateEmptyLabel("暂无盘点单，请先新建盘点单。");
+            _checkEmptyLabel = UiComponentHelper.CreateEmptyStateLabel("暂无盘点单，请先新建盘点单。", "empty/inventory");
 
             content.Controls.Add(_checkGrid);
             content.Controls.Add(_checkEmptyLabel);
@@ -137,7 +131,7 @@ namespace XiaoPuZhangGui.Forms
 
             _scrapSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(180, 30), Font = new Font("Microsoft YaHei UI", 11F) };
             _scrapSearchTextBox.KeyDown += ScrapSearchTextBox_KeyDown;
-            Button searchButton = CreateButton("查找", Color.FromArgb(0, 123, 255), 80);
+            Button searchButton = CreateButton("查找", UiTheme.PrimaryBlue, 80);
             searchButton.Location = new Point(274, 15);
             searchButton.Margin = Padding.Empty;
             searchButton.Click += delegate { LoadScrapProducts(); };
@@ -175,7 +169,7 @@ namespace XiaoPuZhangGui.Forms
             _scrapReasonComboBox.SelectedIndex = 0;
 
             _scrapRemarkTextBox = new TextBox { Location = new Point(454, 76), Size = new Size(180, 30), Font = new Font("Microsoft YaHei UI", 11F) };
-            Button saveButton = CreateButton("保存报废", Color.FromArgb(220, 53, 69), 110);
+            Button saveButton = CreateButton("保存报废", UiTheme.DangerRed, 110);
             saveButton.Location = new Point(654, 72);
             saveButton.Margin = Padding.Empty;
             saveButton.Click += SaveScrapButton_Click;
@@ -202,8 +196,9 @@ namespace XiaoPuZhangGui.Forms
 
             _scrapGrid = CreateGrid();
             _scrapGrid.DataSource = _scrapBindingSource;
+            _scrapGrid.CellContentClick += ScrapGrid_CellContentClick;
             BuildScrapColumns();
-            _scrapEmptyLabel = UiStyleHelper.CreateEmptyLabel("暂无报废记录。");
+            _scrapEmptyLabel = UiComponentHelper.CreateEmptyStateLabel("暂无报废记录。", "empty/scrap");
 
             content.Controls.Add(_scrapGrid);
             content.Controls.Add(_scrapEmptyLabel);
@@ -222,6 +217,7 @@ namespace XiaoPuZhangGui.Forms
             AddNumberColumn(_checkGrid, "盘亏金额", "TotalLossAmount", 100, "N2");
             _checkGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "备注", DataPropertyName = "Remark", Width = 180 });
             _checkGrid.Columns.Add(new DataGridViewButtonColumn { Name = "DetailColumn", HeaderText = "操作", Text = "查看", Width = 80, UseColumnTextForButtonValue = true });
+            _checkGrid.Columns.Add(new DataGridViewButtonColumn { Name = "DeleteColumn", HeaderText = "删除", Text = "删除", Width = 70, UseColumnTextForButtonValue = true });
         }
 
         private void BuildScrapColumns()
@@ -234,6 +230,7 @@ namespace XiaoPuZhangGui.Forms
             AddNumberColumn(_scrapGrid, "损失金额", "LossAmount", 100, "N2");
             _scrapGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "原因", DataPropertyName = "Reason", Width = 90 });
             _scrapGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "备注", DataPropertyName = "Remark", Width = 180 });
+            _scrapGrid.Columns.Add(new DataGridViewButtonColumn { Name = "DeleteColumn", HeaderText = "删除", Text = "删除", Width = 70, UseColumnTextForButtonValue = true });
         }
 
         private void AddButton_Click(object sender, EventArgs e)
@@ -250,7 +247,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void CheckGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _checkGrid.Columns[e.ColumnIndex].Name != "DetailColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)
             {
                 return;
             }
@@ -261,10 +258,86 @@ namespace XiaoPuZhangGui.Forms
                 return;
             }
 
-            using (InventoryCheckDetailForm form = new InventoryCheckDetailForm(record.Id))
+            string columnName = _checkGrid.Columns[e.ColumnIndex].Name;
+            if (columnName == "DetailColumn")
             {
-                form.ShowDialog(this);
+                using (InventoryCheckDetailForm form = new InventoryCheckDetailForm(record.Id))
+                {
+                    form.ShowDialog(this);
+                }
             }
+            else if (columnName == "DeleteColumn")
+            {
+                DeleteCheckRecord(record);
+            }
+        }
+
+        private void ScrapGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _scrapGrid.Columns[e.ColumnIndex].Name != "DeleteColumn")
+            {
+                return;
+            }
+
+            ScrapRecord record = _scrapGrid.Rows[e.RowIndex].DataBoundItem as ScrapRecord;
+            if (record == null)
+            {
+                return;
+            }
+
+            DeleteScrapRecord(record);
+        }
+
+        private void DeleteCheckRecord(InventoryCheck record)
+        {
+            DialogResult result = MessageBox.Show(
+                "确认删除盘点单「" + record.CheckNo + "」吗？\r\n\r\n删除后会按盘盈/盘亏数量反向调整库存。若盘盈库存已被后续业务消耗，将无法删除。",
+                "删除盘点单",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            string message;
+            if (!_inventoryCheckService.TryDelete(record.Id, out message))
+            {
+                MessageBox.Show(message, "无法删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(message, "删除成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadChecks();
+            LoadScrapProducts();
+        }
+
+        private void DeleteScrapRecord(ScrapRecord record)
+        {
+            DialogResult result = MessageBox.Show(
+                "确认删除报废记录「" + record.ScrapNo + "」吗？\r\n\r\n删除后会恢复对应商品库存。此操作不可撤销。",
+                "删除报废记录",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            string message;
+            if (!_scrapService.TryDelete(record.Id, out message))
+            {
+                MessageBox.Show(message, "无法删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(message, "删除成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadScrapProducts();
+            LoadScrapRecords();
         }
 
         private void SaveScrapButton_Click(object sender, EventArgs e)
@@ -443,7 +516,8 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold),
+                UseVisualStyleBackColor = false
             };
             button.FlatAppearance.BorderSize = 0;
             return button;

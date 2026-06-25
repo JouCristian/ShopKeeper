@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -42,13 +43,13 @@ namespace XiaoPuZhangGui.Forms
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
 
-            Button addButton = CreateButton("新增", 260, 72, Color.FromArgb(40, 167, 69));
+            Button addButton = CreateButton("新增", 260, 72, UiTheme.SuccessGreen);
             addButton.Click += AddButton_Click;
 
-            Button renameButton = CreateButton("改名", 350, 72, Color.FromArgb(0, 123, 255));
+            Button renameButton = CreateButton("改名", 350, 72, UiTheme.PrimaryBlue);
             renameButton.Click += RenameButton_Click;
 
-            Button statusButton = CreateButton("停用/启用", 440, 72, Color.FromArgb(108, 117, 125));
+            Button statusButton = CreateButton("停用/启用", 440, 72, UiTheme.MutedGray);
             statusButton.Click += StatusButton_Click;
 
             _grid = new DataGridView
@@ -68,11 +69,12 @@ namespace XiaoPuZhangGui.Forms
             _grid.SelectionChanged += Grid_SelectionChanged;
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "分类名称", DataPropertyName = "Name", Width = 260 });
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "状态", DataPropertyName = "StatusText", Width = 120 });
+            GridStyleHelper.ApplyStandardStyle(_grid);
 
             Label noteLabel = new Label
             {
                 Text = "分类不会物理删除。停用后仍可在商品管理中筛选查看历史商品。",
-                ForeColor = Color.FromArgb(108, 117, 125),
+                ForeColor = UiTheme.TextSecondary,
                 Location = new Point(28, 480),
                 Size = new Size(500, 28)
             };
@@ -84,6 +86,7 @@ namespace XiaoPuZhangGui.Forms
             Controls.Add(statusButton);
             Controls.Add(_grid);
             Controls.Add(noteLabel);
+            UiComponentHelper.NormalizeControlMetrics(this);
 
             LoadCategories();
         }

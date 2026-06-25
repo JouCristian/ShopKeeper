@@ -5,12 +5,12 @@ namespace XiaoPuZhangGui.Utils
 {
     internal static class UiStyleHelper
     {
-        public static readonly Color PageBackground = Color.FromArgb(248, 249, 250);
-        public static readonly Color Primary = Color.FromArgb(0, 123, 255);
-        public static readonly Color Success = Color.FromArgb(40, 167, 69);
-        public static readonly Color WarningBackground = Color.FromArgb(255, 243, 205);
-        public static readonly Color Text = Color.FromArgb(33, 37, 41);
-        public static readonly Color MutedText = Color.FromArgb(73, 80, 87);
+        public static readonly Color PageBackground = UiTheme.PageBackground;
+        public static readonly Color Primary = UiTheme.PrimaryBlue;
+        public static readonly Color Success = UiTheme.SuccessGreen;
+        public static readonly Color WarningBackground = UiTheme.SoftOrange;
+        public static readonly Color Text = UiTheme.TextPrimary;
+        public static readonly Color MutedText = UiTheme.TextSecondary;
 
         public static FlowLayoutPanel CreateActionBar(int height)
         {
@@ -28,29 +28,39 @@ namespace XiaoPuZhangGui.Utils
 
         public static Label CreateEmptyLabel(string text)
         {
-            return new Label
-            {
-                Dock = DockStyle.Bottom,
-                Height = 36,
-                Text = text,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Image = UiAssetHelper.GetIcon("empty_box", 22),
-                ImageAlign = ContentAlignment.MiddleLeft,
-                ForeColor = MutedText,
-                BackColor = Color.White,
-                Padding = new Padding(42, 0, 0, 0),
-                Visible = false
-            };
+            return UiComponentHelper.CreateEmptyStateLabel(text, "empty/general");
         }
 
         public static void StyleButton(Button button, Color color)
         {
-            button.Height = 40;
+            button.Height = UiTheme.ButtonHeight;
             button.BackColor = color;
+            button.ForeColor = Color.White;
             button.FlatStyle = FlatStyle.Flat;
-            button.Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Bold);
+            button.Font = UiTheme.Font(10.5F, FontStyle.Bold);
             button.Cursor = Cursors.Hand;
+            button.UseVisualStyleBackColor = false;
             button.FlatAppearance.BorderSize = 0;
+            UiComponentHelper.ApplyButtonChrome(button, color, Color.Empty);
+        }
+
+        public static void StyleSecondaryButton(Button button)
+        {
+            button.Height = UiTheme.ButtonHeight;
+            button.BackColor = Color.White;
+            button.ForeColor = UiTheme.TextPrimary;
+            button.FlatStyle = FlatStyle.Flat;
+            button.Font = UiTheme.Font(10.5F, FontStyle.Bold);
+            button.Cursor = Cursors.Hand;
+            button.UseVisualStyleBackColor = false;
+            button.FlatAppearance.BorderSize = 1;
+            button.FlatAppearance.BorderColor = UiTheme.CardBorder;
+            UiComponentHelper.ApplyButtonChrome(button, Color.White, UiTheme.CardBorder);
+        }
+
+        public static void StyleDangerButton(Button button)
+        {
+            StyleButton(button, UiTheme.DangerRed);
         }
     }
 }

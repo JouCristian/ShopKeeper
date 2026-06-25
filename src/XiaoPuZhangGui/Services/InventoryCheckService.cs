@@ -56,6 +56,21 @@ namespace XiaoPuZhangGui.Services
             return true;
         }
 
+        public bool TryDelete(long id, out string message)
+        {
+            try
+            {
+                _inventoryCheckRepository.Delete(id);
+                message = "盘点单已删除，库存已反向调整。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
+        }
+
         private static void Normalize(InventoryCheck record)
         {
             if (record.CheckDate == DateTime.MinValue)

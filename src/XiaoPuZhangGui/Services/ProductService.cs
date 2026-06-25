@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using XiaoPuZhangGui.Database;
 using XiaoPuZhangGui.Models;
@@ -60,6 +61,21 @@ namespace XiaoPuZhangGui.Services
         public void SetStatus(long id, bool enabled)
         {
             _productRepository.SetStatus(id, enabled ? "在售" : "停用");
+        }
+
+        public bool TryDelete(long id, out string message)
+        {
+            try
+            {
+                _productRepository.Delete(id);
+                message = "商品已删除。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
         }
 
         private static void Normalize(Product product)

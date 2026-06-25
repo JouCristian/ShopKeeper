@@ -138,6 +138,29 @@ WHERE id = @id;";
             }
         }
 
+        public void Delete(long id)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                if (HasBusinessRecords(connection, id))
+                {
+                    throw new InvalidOperationException("该商品已有业务记录，不能物理删除。请使用停用保留历史数据。");
+                }
+
+                using (SQLiteCommand command = connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM products WHERE id = @id;";
+                    command.Parameters.AddWithValue("@id", id);
+                    if (command.ExecuteNonQuery() == 0)
+                    {
+                        throw new InvalidOperationException("商品不存在或已被删除。");
+                    }
+                }
+            }
+        }
+
         public bool HasProductsInCategory(long categoryId)
         {
             using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
@@ -146,6 +169,22 @@ WHERE id = @id;";
                 connection.Open();
                 command.CommandText = "SELECT COUNT(1) FROM products WHERE category_id = @category_id;";
                 command.Parameters.AddWithValue("@category_id", categoryId);
+                return Convert.ToInt32(command.ExecuteScalar()) > 0;
+            }
+        }
+
+        private static bool HasBusinessRecords(SQLiteConnection connection, long productId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+SELECT
+    (SELECT COUNT(1) FROM purchase_items WHERE product_id = @product_id) +
+    (SELECT COUNT(1) FROM sales_items WHERE product_id = @product_id) +
+    (SELECT COUNT(1) FROM inventory_check_items WHERE product_id = @product_id) +
+    (SELECT COUNT(1) FROM scrap_records WHERE product_id = @product_id) +
+    (SELECT COUNT(1) FROM stock_batches WHERE product_id = @product_id);";
+                command.Parameters.AddWithValue("@product_id", productId);
                 return Convert.ToInt32(command.ExecuteScalar()) > 0;
             }
         }

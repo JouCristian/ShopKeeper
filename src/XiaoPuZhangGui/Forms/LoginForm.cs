@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -16,57 +17,70 @@ namespace XiaoPuZhangGui.Forms
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(430, 290);
-            Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
-            BackColor = Color.White;
+            AutoScaleMode = AutoScaleMode.Dpi;
+            ClientSize = new Size(640, 360);
+            Font = UiTheme.Font(11F);
+            BackColor = UiTheme.PageBackground;
+
+            Panel cardPanel = UiComponentHelper.CreateCardPanel(new Padding(24));
+            cardPanel.Location = new Point(24, 24);
+            cardPanel.Size = new Size(592, 312);
 
             Label titleLabel = new Label
             {
                 Text = "请输入 6 位 PIN",
-                Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                Location = new Point(40, 34),
-                Size = new Size(340, 46),
-                TextAlign = ContentAlignment.MiddleCenter
+                Font = UiTheme.Font(22F, FontStyle.Bold),
+                ForeColor = UiTheme.TextPrimary,
+                Location = new Point(276, 42),
+                Size = new Size(250, 42),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            Label noteLabel = new Label
+            {
+                Text = "本机离线验证，不会联网。",
+                Font = UiTheme.Font(10.5F),
+                ForeColor = UiTheme.TextSecondary,
+                Location = new Point(278, 88),
+                Size = new Size(250, 28),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            PictureBox heroBox = new PictureBox
+            {
+                Location = new Point(28, -15),
+                Size = new Size(200, 340),
+                Image = UiAssetHelper.GetIllustration("login_hero", new Size(330, 480)),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = UiTheme.CardBackground
             };
 
             _pinTextBox = new TextBox
             {
-                Location = new Point(95, 105),
-                Size = new Size(240, 36),
-                Font = new Font("Microsoft YaHei UI", 16F, FontStyle.Regular),
+                Location = new Point(278, 132),
+                Size = new Size(238, 38),
+                Font = UiTheme.Font(16F),
                 MaxLength = 6,
                 PasswordChar = '*',
                 TextAlign = HorizontalAlignment.Center
             };
             _pinTextBox.KeyPress += PinTextBox_KeyPress;
 
-            Button loginButton = new Button
-            {
-                Text = "登录",
-                Location = new Point(95, 165),
-                Size = new Size(110, 42),
-                Font = new Font("Microsoft YaHei UI", 12F, FontStyle.Bold),
-                BackColor = Color.FromArgb(0, 123, 255),
-                ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
-            };
-            loginButton.FlatAppearance.BorderSize = 0;
+            Button loginButton = UiComponentHelper.CreatePrimaryButton("登录", 112);
+            loginButton.Location = new Point(278, 198);
             loginButton.Click += LoginButton_Click;
 
-            Button resetButton = new Button
-            {
-                Text = "忘记 PIN",
-                Location = new Point(225, 165),
-                Size = new Size(110, 42),
-                Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular)
-            };
+            Button resetButton = UiComponentHelper.CreateSecondaryButton("忘记 PIN", 112);
+            resetButton.Location = new Point(404, 198);
             resetButton.Click += ResetButton_Click;
 
-            Controls.Add(titleLabel);
-            Controls.Add(_pinTextBox);
-            Controls.Add(loginButton);
-            Controls.Add(resetButton);
+            cardPanel.Controls.Add(heroBox);
+            cardPanel.Controls.Add(titleLabel);
+            cardPanel.Controls.Add(noteLabel);
+            cardPanel.Controls.Add(_pinTextBox);
+            cardPanel.Controls.Add(loginButton);
+            cardPanel.Controls.Add(resetButton);
+            Controls.Add(cardPanel);
 
             AcceptButton = loginButton;
         }

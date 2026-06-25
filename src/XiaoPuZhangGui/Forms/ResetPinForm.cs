@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Services;
+using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
@@ -49,7 +50,7 @@ namespace XiaoPuZhangGui.Forms
                 Location = new Point(330, 305),
                 Size = new Size(140, 40),
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
-                BackColor = Color.FromArgb(0, 123, 255),
+                BackColor = UiTheme.PrimaryBlue,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat
             };

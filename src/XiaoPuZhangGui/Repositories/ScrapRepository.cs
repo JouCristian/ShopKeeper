@@ -73,6 +73,37 @@ LIMIT 200;";
             }
         }
 
+        public void Delete(long id)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        ScrapRecord record = GetById(connection, transaction, id);
+                        if (record == null)
+                        {
+                            throw new InvalidOperationException("报废记录不存在或已被删除。");
+                        }
+
+                        IncreaseProductStock(connection, transaction, record.ProductId, record.Quantity);
+                        InsertReversalBatch(connection, transaction, record);
+                        DeleteRecord(connection, transaction, id);
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         private static long InsertRecord(SQLiteConnection connection, SQLiteTransaction transaction, ScrapRecord record)
         {
             using (SQLiteCommand command = connection.CreateCommand())
@@ -97,6 +128,76 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@remark", EmptyToDbNull(record.Remark));
                 command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 return (long)command.ExecuteScalar();
+            }
+        }
+
+        private static ScrapRecord GetById(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT id, scrap_no, scrap_date, product_id, product_name_snapshot, quantity,
+       cost_price_snapshot, loss_amount, reason, remark, created_at, updated_at
+FROM scrap_records
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    return reader.Read() ? ReadRecord(reader) : null;
+                }
+            }
+        }
+
+        private static void IncreaseProductStock(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal quantity)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE products
+SET current_stock = current_stock + @quantity,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+                command.Parameters.AddWithValue("@quantity", quantity);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void InsertReversalBatch(SQLiteConnection connection, SQLiteTransaction transaction, ScrapRecord record)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+INSERT INTO stock_batches
+    (product_id, purchase_item_id, batch_code, source_type, source_id, quantity_in,
+     quantity_remaining, purchase_price, quantity, remaining_quantity, unit_cost,
+     expiry_date, created_at)
+VALUES
+    (@product_id, NULL, @batch_code, 'DeleteScrap', @source_id, @quantity,
+     @quantity, @unit_cost, @quantity, @quantity, @unit_cost, NULL, @created_at);";
+                command.Parameters.AddWithValue("@product_id", record.ProductId);
+                command.Parameters.AddWithValue("@batch_code", "DEL-SCR-" + record.Id.ToString("000000"));
+                command.Parameters.AddWithValue("@source_id", record.Id);
+                command.Parameters.AddWithValue("@quantity", record.Quantity);
+                command.Parameters.AddWithValue("@unit_cost", record.CostPriceSnapshot);
+                command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteRecord(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM scrap_records WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                command.ExecuteNonQuery();
             }
         }
 

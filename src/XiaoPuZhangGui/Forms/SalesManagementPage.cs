@@ -44,20 +44,13 @@ namespace XiaoPuZhangGui.Forms
             _orderBindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
+            BackColor = UiTheme.PageBackground;
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
 
-            Label titleLabel = new Label
-            {
-                AutoSize = false,
-                Dock = DockStyle.Top,
-                Height = 72,
-                Text = "销售记账",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(28, 0, 0, 0)
-            };
+            Panel headerPanel = UiComponentHelper.CreatePageHeader(
+                "销售记账",
+                "快速录入销售单，自动计算成本、毛利和赊账",
+                "headers/sales");
 
             Panel contentPanel = new Panel
             {
@@ -103,13 +96,13 @@ namespace XiaoPuZhangGui.Forms
             _lineGrid.DataSource = _lineBindingSource;
             _lineGrid.CellContentClick += LineGrid_CellContentClick;
             BuildLineColumns();
-            _lineEmptyLabel = UiStyleHelper.CreateEmptyLabel("当前销售单暂无商品，请先选择商品并加入销售单。");
+            _lineEmptyLabel = UiComponentHelper.CreateEmptyStateLabel("当前销售单暂无商品，请先选择商品并加入销售单。", "empty/sales_cart");
 
             _orderGrid = CreateGrid();
             _orderGrid.DataSource = _orderBindingSource;
             _orderGrid.CellContentClick += OrderGrid_CellContentClick;
             BuildOrderColumns();
-            _orderEmptyLabel = UiStyleHelper.CreateEmptyLabel("今日暂无销售单。");
+            _orderEmptyLabel = UiComponentHelper.CreateEmptyStateLabel("今日暂无销售单。", "empty/sales_orders");
 
             split.Panel1.Controls.Add(_lineGrid);
             split.Panel1.Controls.Add(_lineEmptyLabel);
@@ -131,7 +124,7 @@ namespace XiaoPuZhangGui.Forms
             contentPanel.Controls.Add(summaryPanel);
             contentPanel.Controls.Add(inputPanel);
             Controls.Add(contentPanel);
-            Controls.Add(titleLabel);
+            Controls.Add(headerPanel);
 
             _lineBindingSource.DataSource = _lines;
             _lines.ListChanged += delegate { RefreshTotals(); };
@@ -162,11 +155,11 @@ namespace XiaoPuZhangGui.Forms
             _quantityNumeric = CreateNumeric(88, 68, 0.001M, 999999M, 3);
             _priceNumeric = CreateNumeric(260, 68, 0M, 999999M, 2);
 
-            Button searchButton = CreateButton("查找", Color.FromArgb(0, 123, 255), 84, 16);
+            Button searchButton = CreateButton("查找", UiTheme.PrimaryBlue, 84, 16);
             searchButton.Location = new Point(286, 14);
             searchButton.Click += delegate { LoadProducts(); };
 
-            Button addButton = CreateButton("加入销售单", Color.FromArgb(40, 167, 69), 130, 68);
+            Button addButton = CreateButton("加入销售单", UiTheme.SuccessGreen, 130, 68);
             addButton.Location = new Point(432, 64);
             addButton.Click += AddButton_Click;
 
@@ -248,14 +241,14 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(140, 30),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(220, 53, 69)
+                ForeColor = UiTheme.DangerRed
             };
 
             _totalAmountLabel = CreateSummaryLabel(405, 58, "应收金额：0.00");
             _totalCostLabel = CreateSummaryLabel(555, 58, "商品成本：0.00");
             _profitLabel = CreateSummaryLabel(705, 58, "本单毛利：0.00");
 
-            Button saveButton = CreateButton("保存销售单", Color.FromArgb(0, 123, 255), 120, 50);
+            Button saveButton = CreateButton("保存销售单", UiTheme.PrimaryBlue, 120, 50);
             saveButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             saveButton.Location = new Point(summaryPanel.Width - 135, 86);
             saveButton.Click += SaveButton_Click;
@@ -318,6 +311,14 @@ namespace XiaoPuZhangGui.Forms
                 HeaderText = "操作",
                 Text = "查看",
                 Width = 80,
+                UseColumnTextForButtonValue = true
+            });
+            _orderGrid.Columns.Add(new DataGridViewButtonColumn
+            {
+                Name = "DeleteOrderColumn",
+                HeaderText = "删除",
+                Text = "删除",
+                Width = 70,
                 UseColumnTextForButtonValue = true
             });
         }
@@ -390,7 +391,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void OrderGrid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _orderGrid.Columns[e.ColumnIndex].Name != "DetailColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)
             {
                 return;
             }
@@ -401,10 +402,45 @@ namespace XiaoPuZhangGui.Forms
                 return;
             }
 
-            using (SalesDetailForm form = new SalesDetailForm(order.Id))
+            string columnName = _orderGrid.Columns[e.ColumnIndex].Name;
+            if (columnName == "DetailColumn")
             {
-                form.ShowDialog(this);
+                using (SalesDetailForm form = new SalesDetailForm(order.Id))
+                {
+                    form.ShowDialog(this);
+                }
             }
+            else if (columnName == "DeleteOrderColumn")
+            {
+                DeleteOrder(order);
+            }
+        }
+
+        private void DeleteOrder(SalesOrder order)
+        {
+            DialogResult result = MessageBox.Show(
+                "确认删除销售单「" + order.OrderNo + "」吗？\r\n\r\n删除后会恢复对应商品库存，并删除关联赊账记录。此操作不可撤销。",
+                "删除销售单",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            string message;
+            if (!_salesService.TryDelete(order.Id, out message))
+            {
+                MessageBox.Show(message, "无法删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(message, "删除成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadProducts();
+            LoadTodayOrders();
+            RefreshTotals();
         }
 
         private void SaveButton_Click(object sender, EventArgs e)
@@ -631,7 +667,8 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold),
+                UseVisualStyleBackColor = false
             };
             button.FlatAppearance.BorderSize = 0;
             return button;

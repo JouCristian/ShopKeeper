@@ -80,6 +80,7 @@
     <Compile Include="Models\PurchaseRecord.cs" />
     <Compile Include="Models\ProductProfitRankItem.cs" />
     <Compile Include="Models\ProductSalesRankItem.cs" />
+    <Compile Include="Models\ProfitTrendPoint.cs" />
     <Compile Include="Models\LowStockReportItem.cs" />
     <Compile Include="Models\ExpiringProductReportItem.cs" />
     <Compile Include="Models\ReportSummary.cs" />
@@ -118,13 +119,19 @@
     <Compile Include="Utils\HashHelper.cs" />
     <Compile Include="Utils\RecoveryKeyGenerator.cs" />
     <Compile Include="Utils\UiAssetHelper.cs" />
+    <Compile Include="Utils\UiComponentHelper.cs" />
     <Compile Include="Utils\UiStatusStyleHelper.cs" />
     <Compile Include="Utils\UiStyleHelper.cs" />
+    <Compile Include="Utils\UiTheme.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="Assets\icons\svg\*.svg" />
-    <None Include="Assets\illustrations\svg\*.svg" />
+    <Content Include="Assets\icons\svg\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\illustrations\svg\*.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Database\schema.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -137,7 +144,7 @@
     <Content Include="Assets\icons\png\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\illustrations\png\*.png">
+    <Content Include="Assets\illustrations\png\**\*.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

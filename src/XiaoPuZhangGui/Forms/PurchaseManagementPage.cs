@@ -23,20 +23,13 @@ namespace XiaoPuZhangGui.Forms
             _bindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
+            BackColor = UiTheme.PageBackground;
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
 
-            Label titleLabel = new Label
-            {
-                AutoSize = false,
-                Dock = DockStyle.Top,
-                Height = 72,
-                Text = "进货入库",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(28, 0, 0, 0)
-            };
+            Panel headerPanel = UiComponentHelper.CreatePageHeader(
+                "进货入库",
+                "记录入库批次、数量和成本，保持库存准确",
+                "headers/purchase");
 
             Panel contentPanel = new Panel
             {
@@ -54,7 +47,7 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = BackColor
             };
 
-            Button addButton = CreateButton("新增入库", Color.FromArgb(40, 167, 69), 110);
+            Button addButton = CreateButton("新增入库", UiTheme.SuccessGreen, 110);
             addButton.Click += AddButton_Click;
 
             _startDatePicker = CreateDatePicker(DateTime.Today.AddDays(-30));
@@ -67,7 +60,7 @@ namespace XiaoPuZhangGui.Forms
             };
             _keywordTextBox.KeyDown += KeywordTextBox_KeyDown;
 
-            Button refreshButton = CreateButton("刷新", Color.FromArgb(0, 123, 255), 90);
+            Button refreshButton = CreateButton("刷新", UiTheme.PrimaryBlue, 90);
             refreshButton.Click += delegate { LoadRecords(); };
 
             filters.Controls.Add(addButton);
@@ -78,6 +71,7 @@ namespace XiaoPuZhangGui.Forms
             filters.Controls.Add(CreateFilterLabel("商品名称", 80));
             filters.Controls.Add(_keywordTextBox);
             filters.Controls.Add(refreshButton);
+            UiComponentHelper.NormalizeFilterBar(filters);
 
             _grid = new DataGridView
             {
@@ -95,7 +89,7 @@ namespace XiaoPuZhangGui.Forms
             };
             _grid.CellContentClick += Grid_CellContentClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
-            _emptyLabel = UiStyleHelper.CreateEmptyLabel("暂无入库记录，请先新增入库单。");
+            _emptyLabel = UiComponentHelper.CreateEmptyStateLabel("暂无入库记录，请先新增入库单。", "empty/purchase");
 
             AddTextColumn("入库单号", "PurchaseNo", 170);
             AddTextColumn("入库日期", "PurchaseDate", 110).DefaultCellStyle.Format = "yyyy-MM-dd";
@@ -112,12 +106,20 @@ namespace XiaoPuZhangGui.Forms
                 UseColumnTextForButtonValue = true
             };
             _grid.Columns.Add(detailColumn);
+            _grid.Columns.Add(new DataGridViewButtonColumn
+            {
+                Name = "DeleteColumn",
+                HeaderText = "删除",
+                Text = "删除",
+                Width = 70,
+                UseColumnTextForButtonValue = true
+            });
 
             contentPanel.Controls.Add(_grid);
             contentPanel.Controls.Add(_emptyLabel);
             contentPanel.Controls.Add(filters);
             Controls.Add(contentPanel);
-            Controls.Add(titleLabel);
+            Controls.Add(headerPanel);
 
             LoadRecords();
         }
@@ -135,7 +137,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void Grid_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0 || _grid.Columns[e.ColumnIndex].Name != "DetailColumn")
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)
             {
                 return;
             }
@@ -146,10 +148,43 @@ namespace XiaoPuZhangGui.Forms
                 return;
             }
 
-            using (PurchaseDetailForm form = new PurchaseDetailForm(record.Id))
+            string columnName = _grid.Columns[e.ColumnIndex].Name;
+            if (columnName == "DetailColumn")
             {
-                form.ShowDialog(this);
+                using (PurchaseDetailForm form = new PurchaseDetailForm(record.Id))
+                {
+                    form.ShowDialog(this);
+                }
             }
+            else if (columnName == "DeleteColumn")
+            {
+                DeleteRecord(record);
+            }
+        }
+
+        private void DeleteRecord(PurchaseRecord record)
+        {
+            DialogResult result = MessageBox.Show(
+                "确认删除入库单「" + record.PurchaseNo + "」吗？\r\n\r\n删除后会扣回本次入库库存。若该批次已被后续销售或报废消耗，将无法删除。",
+                "删除入库单",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            string message;
+            if (!_purchaseService.TryDelete(record.Id, out message))
+            {
+                MessageBox.Show(message, "无法删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(message, "删除成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadRecords();
         }
 
         private void KeywordTextBox_KeyDown(object sender, KeyEventArgs e)
@@ -229,7 +264,8 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold),
+                UseVisualStyleBackColor = false
             };
             button.FlatAppearance.BorderSize = 0;
             return button;

@@ -24,20 +24,13 @@ namespace XiaoPuZhangGui.Forms
             _bindingSource = new BindingSource();
 
             Dock = DockStyle.Fill;
-            BackColor = Color.FromArgb(248, 249, 250);
+            BackColor = UiTheme.PageBackground;
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
 
-            Label titleLabel = new Label
-            {
-                AutoSize = false,
-                Dock = DockStyle.Top,
-                Height = 72,
-                Text = "赊账管理",
-                Font = new Font("Microsoft YaHei UI", 22F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(33, 37, 41),
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(28, 0, 0, 0)
-            };
+            Panel headerPanel = UiComponentHelper.CreatePageHeader(
+                "赊账管理",
+                "跟踪欠款、还款和未结清账款",
+                "headers/credit");
 
             Panel content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24), BackColor = BackColor };
             FlowLayoutPanel filters = new FlowLayoutPanel
@@ -64,7 +57,7 @@ namespace XiaoPuZhangGui.Forms
             _startDatePicker = CreateDatePicker(DateTime.Today.AddDays(-90));
             _endDatePicker = CreateDatePicker(DateTime.Today);
 
-            Button refreshButton = CreateButton("刷新", Color.FromArgb(0, 123, 255), 90);
+            Button refreshButton = CreateButton("刷新", UiTheme.PrimaryBlue, 90);
             refreshButton.Click += delegate { LoadRecords(); };
 
             filters.Controls.Add(CreateFilterLabel("状态", 52));
@@ -76,6 +69,7 @@ namespace XiaoPuZhangGui.Forms
             filters.Controls.Add(CreateFilterLabel("结束日期", 78));
             filters.Controls.Add(_endDatePicker);
             filters.Controls.Add(refreshButton);
+            UiComponentHelper.NormalizeFilterBar(filters);
 
             _grid = new DataGridView
             {
@@ -94,13 +88,13 @@ namespace XiaoPuZhangGui.Forms
             _grid.CellContentClick += Grid_CellContentClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
             BuildColumns();
-            _emptyLabel = UiStyleHelper.CreateEmptyLabel("暂无赊账记录。");
+            _emptyLabel = UiComponentHelper.CreateEmptyStateLabel("暂无赊账记录。", "empty/credit");
 
             content.Controls.Add(_grid);
             content.Controls.Add(_emptyLabel);
             content.Controls.Add(filters);
             Controls.Add(content);
-            Controls.Add(titleLabel);
+            Controls.Add(headerPanel);
 
             LoadRecords();
         }
@@ -117,6 +111,7 @@ namespace XiaoPuZhangGui.Forms
             _grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "备注", DataPropertyName = "Remark", Width = 160 });
             _grid.Columns.Add(new DataGridViewButtonColumn { Name = "PaymentColumn", HeaderText = "还款", Text = "还款", Width = 70, UseColumnTextForButtonValue = true });
             _grid.Columns.Add(new DataGridViewButtonColumn { Name = "DetailColumn", HeaderText = "操作", Text = "查看", Width = 70, UseColumnTextForButtonValue = true });
+            _grid.Columns.Add(new DataGridViewButtonColumn { Name = "DeleteColumn", HeaderText = "删除", Text = "删除", Width = 70, UseColumnTextForButtonValue = true });
         }
 
         private void Grid_CellContentClick(object sender, DataGridViewCellEventArgs e)
@@ -156,6 +151,35 @@ namespace XiaoPuZhangGui.Forms
                     }
                 }
             }
+            else if (columnName == "DeleteColumn")
+            {
+                DeleteRecord(record);
+            }
+        }
+
+        private void DeleteRecord(CreditRecord record)
+        {
+            DialogResult result = MessageBox.Show(
+                "确认删除赊账记录「" + record.CreditNo + "」吗？\r\n\r\n删除后会同时删除还款明细，并将关联销售单标记为无赊账余额。此操作不可撤销。",
+                "删除赊账记录",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            string message;
+            if (!_creditService.TryDelete(record.Id, out message))
+            {
+                MessageBox.Show(message, "无法删除", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(message, "删除成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            LoadRecords();
         }
 
         private void DebtorTextBox_KeyDown(object sender, KeyEventArgs e)
@@ -226,7 +250,8 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+                Font = UiTheme.Font(10F, FontStyle.Bold),
+                UseVisualStyleBackColor = false
             };
             button.FlatAppearance.BorderSize = 0;
             return button;

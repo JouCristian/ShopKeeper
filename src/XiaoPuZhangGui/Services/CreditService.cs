@@ -73,6 +73,21 @@ namespace XiaoPuZhangGui.Services
             return true;
         }
 
+        public bool TryDelete(long id, out string message)
+        {
+            try
+            {
+                _creditRepository.Delete(id);
+                message = "赊账记录已删除，关联销售单已清除赊账余额。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
+        }
+
         private static string ToStatusValue(string statusText)
         {
             if (statusText == "未结清")

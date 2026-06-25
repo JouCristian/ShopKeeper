@@ -66,6 +66,21 @@ namespace XiaoPuZhangGui.Services
             return true;
         }
 
+        public bool TryDelete(long id, out string message)
+        {
+            try
+            {
+                _salesRepository.Delete(id);
+                message = "销售单已删除，库存已同步恢复。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
+        }
+
         public bool HasStockShortage(SalesOrder order)
         {
             Dictionary<long, decimal> quantities = new Dictionary<long, decimal>();

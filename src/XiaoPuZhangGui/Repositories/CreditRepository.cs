@@ -150,6 +150,38 @@ ORDER BY date(payment_date) ASC, id ASC;";
             }
         }
 
+        public void Delete(long id)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        CreditRecord record = GetById(connection, transaction, id);
+                        if (record == null)
+                        {
+                            throw new InvalidOperationException("赊账记录不存在或已被删除。");
+                        }
+
+                        DeletePayments(connection, transaction, id);
+                        DeleteRepayments(connection, transaction, id);
+                        DeleteRecord(connection, transaction, id);
+                        ClearSalesOrderCredit(connection, transaction, record.SalesOrderId);
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         internal static long InsertInitialCredit(SQLiteConnection connection, SQLiteTransaction transaction, long salesOrderId, string debtorName, decimal originalAmount, string remark)
         {
             using (SQLiteCommand command = connection.CreateCommand())
@@ -175,6 +207,56 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@remark", EmptyToDbNull(remark));
                 command.Parameters.AddWithValue("@created_at", now);
                 return (long)command.ExecuteScalar();
+            }
+        }
+
+        private static void DeletePayments(SQLiteConnection connection, SQLiteTransaction transaction, long creditRecordId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM credit_payments WHERE credit_record_id = @credit_record_id;";
+                command.Parameters.AddWithValue("@credit_record_id", creditRecordId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteRepayments(SQLiteConnection connection, SQLiteTransaction transaction, long creditRecordId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM repayment_records WHERE credit_record_id = @credit_record_id;";
+                command.Parameters.AddWithValue("@credit_record_id", creditRecordId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteRecord(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM credit_records WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void ClearSalesOrderCredit(SQLiteConnection connection, SQLiteTransaction transaction, long salesOrderId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE sales_orders
+SET paid_amount = total_amount,
+    credit_amount = 0,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", salesOrderId);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
             }
         }
 

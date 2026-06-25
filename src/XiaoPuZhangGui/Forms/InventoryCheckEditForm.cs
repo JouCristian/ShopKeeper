@@ -104,7 +104,7 @@ namespace XiaoPuZhangGui.Forms
             };
             Controls.Add(_totalLabel);
 
-            Button saveButton = CreateButton("保存盘点单", Color.FromArgb(0, 123, 255), 130);
+            Button saveButton = CreateButton("保存盘点单", UiTheme.PrimaryBlue, 130);
             saveButton.Location = new Point(854, 582);
             saveButton.Click += SaveButton_Click;
             Controls.Add(saveButton);
@@ -114,7 +114,7 @@ namespace XiaoPuZhangGui.Forms
         {
             _productSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(190, 30), Font = new Font("Microsoft YaHei UI", 11F) };
             _productSearchTextBox.KeyDown += ProductSearchTextBox_KeyDown;
-            Button searchButton = CreateButton("查找", Color.FromArgb(0, 123, 255), 80);
+            Button searchButton = CreateButton("查找", UiTheme.PrimaryBlue, 80);
             searchButton.Location = new Point(286, 16);
             searchButton.Click += delegate { LoadProducts(); };
 
@@ -142,7 +142,7 @@ namespace XiaoPuZhangGui.Forms
 
             _lineRemarkTextBox = new TextBox { Location = new Point(470, 74), Size = new Size(170, 30), Font = new Font("Microsoft YaHei UI", 11F) };
 
-            Button addButton = CreateButton("加入明细", Color.FromArgb(40, 167, 69), 110);
+            Button addButton = CreateButton("加入明细", UiTheme.SuccessGreen, 110);
             addButton.Location = new Point(858, 108);
             addButton.Click += AddButton_Click;
 

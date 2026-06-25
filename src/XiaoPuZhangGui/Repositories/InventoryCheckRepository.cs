@@ -177,6 +177,59 @@ ORDER BY i.id ASC;";
             }
         }
 
+        public void Delete(long id)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        IList<InventoryCheckItem> items = GetItems(connection, transaction, id);
+                        if (items.Count == 0 && !Exists(connection, transaction, id))
+                        {
+                            throw new InvalidOperationException("盘点单不存在或已被删除。");
+                        }
+
+                        foreach (InventoryCheckItem item in items)
+                        {
+                            if (item.DifferenceQuantity > 0)
+                            {
+                                EnsureAdjustmentBatchUnused(connection, transaction, item.Id);
+                                EnsureEnoughStockToReverse(connection, transaction, item.ProductId, item.DifferenceQuantity);
+                            }
+                        }
+
+                        foreach (InventoryCheckItem item in items)
+                        {
+                            if (item.DifferenceQuantity > 0)
+                            {
+                                DeleteAdjustmentBatch(connection, transaction, item.Id);
+                            }
+                            else if (item.DifferenceQuantity < 0)
+                            {
+                                InsertReversalBatch(connection, transaction, item);
+                            }
+
+                            ReverseProductStock(connection, transaction, item.ProductId, item.DifferenceQuantity);
+                        }
+
+                        DeleteItems(connection, transaction, id);
+                        DeleteRecord(connection, transaction, id);
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         private static void PrepareItems(SQLiteConnection connection, SQLiteTransaction transaction, InventoryCheck record)
         {
             record.TotalProfitQuantity = 0;
@@ -203,6 +256,164 @@ ORDER BY i.id ASC;";
                     record.TotalLossQuantity += Math.Abs(item.DifferenceQuantity);
                     record.TotalLossAmount += Math.Abs(item.DifferenceAmount);
                 }
+            }
+        }
+
+        private static bool Exists(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT COUNT(1) FROM inventory_checks WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                return Convert.ToInt32(command.ExecuteScalar()) > 0;
+            }
+        }
+
+        private static IList<InventoryCheckItem> GetItems(SQLiteConnection connection, SQLiteTransaction transaction, long inventoryCheckId)
+        {
+            List<InventoryCheckItem> items = new List<InventoryCheckItem>();
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT i.id, i.inventory_check_id, i.product_id, i.product_name_snapshot,
+       IFNULL(cat.name, '') AS category_name, i.system_stock, i.actual_stock,
+       i.difference_quantity, i.cost_price_snapshot, i.difference_amount,
+       i.reason, i.remark, i.created_at, i.updated_at
+FROM inventory_check_items i
+LEFT JOIN products p ON p.id = i.product_id
+LEFT JOIN categories cat ON cat.id = p.category_id
+WHERE i.inventory_check_id = @inventory_check_id
+ORDER BY i.id ASC;";
+                command.Parameters.AddWithValue("@inventory_check_id", inventoryCheckId);
+
+                using (SQLiteDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        items.Add(ReadItem(reader));
+                    }
+                }
+            }
+
+            return items;
+        }
+
+        private static void EnsureAdjustmentBatchUnused(SQLiteConnection connection, SQLiteTransaction transaction, long inventoryCheckItemId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+SELECT COUNT(1)
+FROM stock_batches
+WHERE source_type = 'InventoryCheck'
+  AND source_id = @source_id
+  AND quantity_remaining < quantity_in;";
+                command.Parameters.AddWithValue("@source_id", inventoryCheckItemId);
+
+                if (Convert.ToInt32(command.ExecuteScalar()) > 0)
+                {
+                    throw new InvalidOperationException("该盘点单的盘盈库存已经被后续业务消耗，不能直接删除。");
+                }
+            }
+        }
+
+        private static void EnsureEnoughStockToReverse(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal quantity)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "SELECT current_stock FROM products WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+
+                object value = command.ExecuteScalar();
+                if (value == null || value == DBNull.Value)
+                {
+                    throw new InvalidOperationException("盘点单关联的商品不存在，不能删除。");
+                }
+
+                if (Convert.ToDecimal(value) < quantity)
+                {
+                    throw new InvalidOperationException("当前库存少于本次盘盈数量，不能删除该盘点单。");
+                }
+            }
+        }
+
+        private static void DeleteAdjustmentBatch(SQLiteConnection connection, SQLiteTransaction transaction, long inventoryCheckItemId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM stock_batches WHERE source_type = 'InventoryCheck' AND source_id = @source_id;";
+                command.Parameters.AddWithValue("@source_id", inventoryCheckItemId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void InsertReversalBatch(SQLiteConnection connection, SQLiteTransaction transaction, InventoryCheckItem item)
+        {
+            decimal quantity = Math.Abs(item.DifferenceQuantity);
+
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+INSERT INTO stock_batches
+    (product_id, purchase_item_id, batch_code, source_type, source_id, quantity_in,
+     quantity_remaining, purchase_price, quantity, remaining_quantity, unit_cost,
+     expiry_date, created_at)
+VALUES
+    (@product_id, NULL, @batch_code, 'DeleteInventoryCheck', @source_id, @quantity,
+     @quantity, @unit_cost, @quantity, @quantity, @unit_cost, NULL, @created_at);";
+                command.Parameters.AddWithValue("@product_id", item.ProductId);
+                command.Parameters.AddWithValue("@batch_code", "DEL-CHK-" + item.Id.ToString("000000"));
+                command.Parameters.AddWithValue("@source_id", item.Id);
+                command.Parameters.AddWithValue("@quantity", quantity);
+                command.Parameters.AddWithValue("@unit_cost", item.CostPriceSnapshot);
+                command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void ReverseProductStock(SQLiteConnection connection, SQLiteTransaction transaction, long productId, decimal differenceQuantity)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE products
+SET current_stock = current_stock - @difference_quantity,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", productId);
+                command.Parameters.AddWithValue("@difference_quantity", differenceQuantity);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteItems(SQLiteConnection connection, SQLiteTransaction transaction, long inventoryCheckId)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM inventory_check_items WHERE inventory_check_id = @inventory_check_id;";
+                command.Parameters.AddWithValue("@inventory_check_id", inventoryCheckId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        private static void DeleteRecord(SQLiteConnection connection, SQLiteTransaction transaction, long id)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = "DELETE FROM inventory_checks WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                command.ExecuteNonQuery();
             }
         }
 

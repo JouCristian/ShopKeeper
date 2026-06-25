@@ -7,7 +7,7 @@
     <ProjectGuid>{88D034C0-25FE-4CF1-B8D7-338672C6204A}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>XiaoPuZhangGui</RootNamespace>
-    <AssemblyName>XiaoPuZhangGui</AssemblyName>
+    <AssemblyName>小铺掌柜 AI智能版</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -19,7 +19,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>bin\Debug-AI\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -28,7 +28,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>bin\Release-AI\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -40,6 +40,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
@@ -47,6 +48,7 @@
   <ItemGroup>
     <Compile Include="Database\DatabaseService.cs" />
     <Compile Include="Forms\CategoryManagementForm.cs" />
+    <Compile Include="Forms\AiAssistantPage.cs" />
     <Compile Include="Forms\CreditDetailForm.cs" />
     <Compile Include="Forms\CreditManagementPage.cs" />
     <Compile Include="Forms\CreditPaymentForm.cs" />
@@ -70,11 +72,14 @@
     <Compile Include="Forms\SalesManagementPage.cs" />
     <Compile Include="Forms\SettingsPage.cs" />
     <Compile Include="Models\AppConfig.cs" />
+    <Compile Include="Models\AiSettings.cs" />
     <Compile Include="Models\Category.cs" />
     <Compile Include="Models\CreditPayment.cs" />
+    <Compile Include="Models\DeepSeekConnectionResult.cs" />
     <Compile Include="Models\CreditRecord.cs" />
     <Compile Include="Models\InventoryCheck.cs" />
     <Compile Include="Models\InventoryCheckItem.cs" />
+    <Compile Include="Models\NetworkStatusResult.cs" />
     <Compile Include="Models\Product.cs" />
     <Compile Include="Models\PurchaseItem.cs" />
     <Compile Include="Models\PurchaseRecord.cs" />
@@ -101,15 +106,19 @@
     <Compile Include="Repositories\ScrapRepository.cs" />
     <Compile Include="Repositories\StockBatchRepository.cs" />
     <Compile Include="Services\AppConfigService.cs" />
+    <Compile Include="Services\AiSettingsService.cs" />
     <Compile Include="Services\AuthService.cs" />
     <Compile Include="Services\BackupService.cs" />
     <Compile Include="Services\CategoryService.cs" />
+    <Compile Include="Services\BusinessSummaryService.cs" />
     <Compile Include="Services\CreditService.cs" />
     <Compile Include="Services\ExcelExportService.cs" />
+    <Compile Include="Services\DeepSeekClient.cs" />
     <Compile Include="Services\InventoryCheckService.cs" />
     <Compile Include="Services\ProductService.cs" />
     <Compile Include="Services\PurchaseService.cs" />
     <Compile Include="Services\ReportService.cs" />
+    <Compile Include="Services\NetworkStatusService.cs" />
     <Compile Include="Services\SalesService.cs" />
     <Compile Include="Services\ScrapService.cs" />
     <Compile Include="Services\StockBatchService.cs" />

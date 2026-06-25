@@ -15,7 +15,7 @@ namespace XiaoPuZhangGui.Forms
 
         public FirstRunForm()
         {
-            Text = "首次使用初始化";
+            Text = "小铺掌柜 AI智能版 - 首次使用初始化";
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -42,7 +42,7 @@ namespace XiaoPuZhangGui.Forms
 
             Label titleLabel = new Label
             {
-                Text = "欢迎使用小铺掌柜",
+                Text = "欢迎使用小铺掌柜 AI智能版",
                 Font = UiTheme.Font(22F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 Location = new Point(28, 24),
@@ -51,7 +51,7 @@ namespace XiaoPuZhangGui.Forms
 
             Label noteLabel = new Label
             {
-                Text = "请先设置店铺名称和 6 位数字 PIN。所有信息仅保存在本机。",
+                Text = "请先设置店铺名称和 6 位数字 PIN。本地功能保存在本机，AI 功能需要联网配置。",
                 Font = UiTheme.Font(10.5F),
                 ForeColor = UiTheme.TextSecondary,
                 Location = new Point(30, 72),

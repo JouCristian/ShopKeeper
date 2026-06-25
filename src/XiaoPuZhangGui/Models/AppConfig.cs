@@ -17,5 +17,19 @@ namespace XiaoPuZhangGui.Models
         public string RecoveryKeyHash { get; set; }
 
         public string RecoveryKeySalt { get; set; }
+
+        public bool AiEnabled { get; set; }
+
+        public string AiProvider { get; set; }
+
+        public string AiBaseUrl { get; set; }
+
+        public string AiModel { get; set; }
+
+        public string AiApiKeyEncrypted { get; set; }
+
+        public string AiApiKeyMasked { get; set; }
+
+        public string LastConnectionTestTime { get; set; }
     }
 }

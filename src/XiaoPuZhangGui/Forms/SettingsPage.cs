@@ -246,7 +246,11 @@ namespace XiaoPuZhangGui.Forms
             _backupPathLabel.Text = config.BackupPath;
             _exportPathLabel.Text = AppPaths.ExportDirectory;
             _initializedLabel.Text = config.IsInitialized ? "是" : "否";
-            _versionLabel.Text = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            object[] attributes = Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false);
+            string version = attributes.Length > 0
+                ? ((AssemblyInformationalVersionAttribute)attributes[0]).InformationalVersion
+                : Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            _versionLabel.Text = "小铺掌柜 AI智能版 " + version;
             LoadRecentBackups();
         }
 

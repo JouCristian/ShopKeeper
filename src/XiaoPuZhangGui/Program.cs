@@ -51,7 +51,7 @@ namespace XiaoPuZhangGui
             {
                 MessageBox.Show(
                     "程序启动失败：\r\n" + ex.Message,
-                    "小铺掌柜",
+                    "小铺掌柜 AI智能版",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }

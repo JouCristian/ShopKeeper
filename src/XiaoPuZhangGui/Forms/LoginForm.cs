@@ -12,7 +12,7 @@ namespace XiaoPuZhangGui.Forms
 
         public LoginForm()
         {
-            Text = "小铺掌柜登录";
+            Text = "小铺掌柜 AI智能版登录";
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -38,7 +38,7 @@ namespace XiaoPuZhangGui.Forms
 
             Label noteLabel = new Label
             {
-                Text = "本机离线验证，不会联网。",
+                Text = "本机离线验证，AI 助手需进入系统后单独联网配置。",
                 Font = UiTheme.Font(10.5F),
                 ForeColor = UiTheme.TextSecondary,
                 Location = new Point(278, 88),

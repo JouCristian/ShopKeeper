@@ -30,7 +30,14 @@ namespace XiaoPuZhangGui.Services
                 PinHash = ReadValue(root, "PinHash", string.Empty),
                 PinSalt = ReadValue(root, "PinSalt", string.Empty),
                 RecoveryKeyHash = ReadValue(root, "RecoveryKeyHash", string.Empty),
-                RecoveryKeySalt = ReadValue(root, "RecoveryKeySalt", string.Empty)
+                RecoveryKeySalt = ReadValue(root, "RecoveryKeySalt", string.Empty),
+                AiEnabled = ReadBool(root, "AiEnabled", false),
+                AiProvider = ReadValue(root, "AiProvider", "DeepSeek"),
+                AiBaseUrl = ReadValue(root, "AiBaseUrl", "https://api.deepseek.com"),
+                AiModel = ReadValue(root, "AiModel", "deepseek-v4-flash"),
+                AiApiKeyEncrypted = ReadValue(root, "AiApiKeyEncrypted", string.Empty),
+                AiApiKeyMasked = ReadValue(root, "AiApiKeyMasked", string.Empty),
+                LastConnectionTestTime = ReadValue(root, "LastConnectionTestTime", string.Empty)
             };
 
             bool changed = NormalizeRuntimePaths(config);
@@ -54,7 +61,14 @@ namespace XiaoPuZhangGui.Services
                     new XElement("PinHash", config.PinHash ?? string.Empty),
                     new XElement("PinSalt", config.PinSalt ?? string.Empty),
                     new XElement("RecoveryKeyHash", config.RecoveryKeyHash ?? string.Empty),
-                    new XElement("RecoveryKeySalt", config.RecoveryKeySalt ?? string.Empty)));
+                    new XElement("RecoveryKeySalt", config.RecoveryKeySalt ?? string.Empty),
+                    new XElement("AiEnabled", config.AiEnabled),
+                    new XElement("AiProvider", config.AiProvider ?? string.Empty),
+                    new XElement("AiBaseUrl", config.AiBaseUrl ?? string.Empty),
+                    new XElement("AiModel", config.AiModel ?? string.Empty),
+                    new XElement("AiApiKeyEncrypted", config.AiApiKeyEncrypted ?? string.Empty),
+                    new XElement("AiApiKeyMasked", config.AiApiKeyMasked ?? string.Empty),
+                    new XElement("LastConnectionTestTime", config.LastConnectionTestTime ?? string.Empty)));
 
             document.Save(AppPaths.ConfigFilePath);
         }
@@ -77,7 +91,14 @@ namespace XiaoPuZhangGui.Services
                 PinHash = string.Empty,
                 PinSalt = string.Empty,
                 RecoveryKeyHash = string.Empty,
-                RecoveryKeySalt = string.Empty
+                RecoveryKeySalt = string.Empty,
+                AiEnabled = false,
+                AiProvider = "DeepSeek",
+                AiBaseUrl = "https://api.deepseek.com",
+                AiModel = "deepseek-v4-flash",
+                AiApiKeyEncrypted = string.Empty,
+                AiApiKeyMasked = string.Empty,
+                LastConnectionTestTime = string.Empty
             };
         }
 
@@ -100,6 +121,24 @@ namespace XiaoPuZhangGui.Services
             if (config.BackupPath != AppPaths.BackupDirectory)
             {
                 config.BackupPath = AppPaths.BackupDirectory;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.AiProvider))
+            {
+                config.AiProvider = "DeepSeek";
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.AiBaseUrl))
+            {
+                config.AiBaseUrl = "https://api.deepseek.com";
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(config.AiModel))
+            {
+                config.AiModel = "deepseek-v4-flash";
                 changed = true;
             }
 

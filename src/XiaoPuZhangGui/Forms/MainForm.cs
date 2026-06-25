@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Windows.Forms;
+using XiaoPuZhangGui.Models;
+using XiaoPuZhangGui.Services;
 using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
@@ -15,17 +18,26 @@ namespace XiaoPuZhangGui.Forms
         private const string InventoryCheckTitle = "库存盘点";
         private const string CreditManagementTitle = "赊账管理";
         private const string ReportTitle = "经营报表";
+        private const string AiAssistantTitle = "AI 助手";
         private const string SettingsTitle = "系统设置";
 
+        private readonly NetworkStatusService _networkStatusService;
+        private readonly AiSettingsService _aiSettingsService;
         private readonly Panel _navigationPanel;
         private readonly FlowLayoutPanel _navigationListPanel;
         private readonly Panel _contentPanel;
-        private readonly Label _footerLabel;
+        private readonly Panel _statusPanel;
+        private readonly Panel _aiNetworkDot;
+        private readonly Panel _localSystemDot;
+        private readonly Label _aiNetworkLabel;
+        private readonly Label _localSystemLabel;
+        private readonly Label _modeLabel;
         private readonly Dictionary<string, SidebarNavigationButton> _navigationButtons;
+        private NetworkStatusResult _networkStatus;
 
         public MainForm()
         {
-            Text = "小铺掌柜";
+            Text = "小铺掌柜 AI智能版";
             StartPosition = FormStartPosition.CenterScreen;
             MinimumSize = new Size(1100, 680);
             Size = new Size(1240, 760);
@@ -33,6 +45,9 @@ namespace XiaoPuZhangGui.Forms
             BackColor = Color.White;
             ApplyApplicationIcon();
 
+            _networkStatusService = new NetworkStatusService();
+            _aiSettingsService = new AiSettingsService();
+            _networkStatus = NetworkStatusResult.Unknown();
             _navigationButtons = new Dictionary<string, SidebarNavigationButton>();
 
             _navigationPanel = new Panel
@@ -62,25 +77,34 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = UiTheme.PageBackground
             };
 
-            _footerLabel = new Label
+            _statusPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 40,
-                Text = "本地离线运行",
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = UiTheme.Font(9.5F),
-                ForeColor = Color.FromArgb(196, 211, 229),
+                Height = 100,
                 BackColor = UiTheme.SidebarDark
             };
+            _aiNetworkDot = CreateStatusDot();
+            _localSystemDot = CreateStatusDot();
+            _aiNetworkLabel = CreateStatusLabel();
+            _localSystemLabel = CreateStatusLabel();
+            _modeLabel = CreateModeLabel();
+            BuildSidebarStatusPanel();
 
             Controls.Add(_contentPanel);
             Controls.Add(_navigationPanel);
             _navigationPanel.Controls.Add(_navigationListPanel);
-            _navigationPanel.Controls.Add(_footerLabel);
+            _navigationPanel.Controls.Add(_statusPanel);
 
             BuildNavigation();
             ResizeNavigationButtons();
+            UpdateSidebarStatus();
             ShowPage(HomeDashboardTitle);
+        }
+
+        protected override async void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            await RefreshNetworkStatusAsync();
         }
 
 
@@ -111,6 +135,7 @@ namespace XiaoPuZhangGui.Forms
             AddNavigationButton(InventoryCheckTitle, "库存修正、盈亏原因和报废处理入口。", "inventory");
             AddNavigationButton(CreditManagementTitle, "欠款查询、还款登记和备注管理入口。", "credit");
             AddNavigationButton(ReportTitle, "日报、月报、商品排行、库存提醒和报废摘要。", "report");
+            AddNavigationButton(AiAssistantTitle, "联网 AI 经营助手、API 接入和智能分析入口。", "report");
             AddNavigationButton(SettingsTitle, "店铺信息、数据库路径、备份路径和恢复相关设置入口。", "settings");
         }
 
@@ -120,9 +145,9 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Top,
                 Height = 72,
-                Text = "小铺掌柜",
+                Text = "小铺掌柜 AI智能版",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = UiTheme.Font(18F, FontStyle.Bold),
+                Font = UiTheme.Font(15F, FontStyle.Bold),
                 ForeColor = Color.White
             };
 
@@ -215,6 +240,17 @@ namespace XiaoPuZhangGui.Forms
                 return;
             }
 
+            if (title == AiAssistantTitle)
+            {
+                ShowContentPage(new AiAssistantPage(
+                    _networkStatusService,
+                    _aiSettingsService,
+                    _networkStatus,
+                    OnAiPageNetworkStatusChanged,
+                    UpdateSidebarStatus));
+                return;
+            }
+
             if (title == SettingsTitle)
             {
                 ShowContentPage(new SettingsPage());
@@ -226,6 +262,108 @@ namespace XiaoPuZhangGui.Forms
                 : string.Empty;
 
             ShowContentPage(new PlaceholderPage(title, description));
+        }
+
+        private async System.Threading.Tasks.Task RefreshNetworkStatusAsync()
+        {
+            _networkStatus = await _networkStatusService.CheckAsync();
+            UpdateSidebarStatus();
+        }
+
+        private void OnAiPageNetworkStatusChanged(NetworkStatusResult result)
+        {
+            _networkStatus = result ?? NetworkStatusResult.Unknown();
+            UpdateSidebarStatus();
+        }
+
+        private void BuildSidebarStatusPanel()
+        {
+            Label title = new Label
+            {
+                Text = "运行状态",
+                Location = new Point(22, 8),
+                Size = new Size(170, 20),
+                Font = UiTheme.Font(9.5F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(221, 235, 255),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            _aiNetworkDot.Location = new Point(24, 36);
+            _aiNetworkLabel.Location = new Point(42, 29);
+            _aiNetworkLabel.Size = new Size(160, 26);
+
+            _localSystemDot.Location = new Point(24, 62);
+            _localSystemLabel.Location = new Point(42, 55);
+            _localSystemLabel.Size = new Size(160, 26);
+
+            _modeLabel.Location = new Point(22, 78);
+            _modeLabel.Size = new Size(176, 20);
+
+            _statusPanel.Controls.Add(title);
+            _statusPanel.Controls.Add(_aiNetworkDot);
+            _statusPanel.Controls.Add(_aiNetworkLabel);
+            _statusPanel.Controls.Add(_localSystemDot);
+            _statusPanel.Controls.Add(_localSystemLabel);
+            _statusPanel.Controls.Add(_modeLabel);
+        }
+
+        private void UpdateSidebarStatus()
+        {
+            bool networkAvailable = _networkStatus != null && _networkStatus.IsNetworkAvailable;
+            bool localReady = IsLocalSystemReady();
+            AiSettings settings = _aiSettingsService.Load();
+            bool apiAvailable = networkAvailable &&
+                settings.AiEnabled &&
+                settings.HasApiKey &&
+                !string.IsNullOrWhiteSpace(settings.LastConnectionTestTime);
+
+            _aiNetworkDot.BackColor = networkAvailable ? UiTheme.SuccessGreen : UiTheme.DangerRed;
+            _localSystemDot.BackColor = localReady ? UiTheme.SuccessGreen : UiTheme.DangerRed;
+            _aiNetworkLabel.Text = "AI 联网能力：" + (networkAvailable ? "可用" : "不可用");
+            _localSystemLabel.Text = "本地经营系统：" + (localReady ? "正常" : "异常");
+            _modeLabel.Text = apiAvailable ? "当前模式：AI 智能模式" : "当前模式：本地离线模式";
+        }
+
+        private static bool IsLocalSystemReady()
+        {
+            try
+            {
+                AppConfig config = AppConfigService.LoadOrCreateDefault();
+                return !string.IsNullOrWhiteSpace(config.DatabasePath) && File.Exists(config.DatabasePath);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static Panel CreateStatusDot()
+        {
+            return new RoundStatusDot
+            {
+                Size = new Size(10, 10),
+                BackColor = UiTheme.MutedGray
+            };
+        }
+
+        private static Label CreateStatusLabel()
+        {
+            return new Label
+            {
+                Font = UiTheme.Font(8.5F),
+                ForeColor = Color.FromArgb(196, 211, 229),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+        }
+
+        private static Label CreateModeLabel()
+        {
+            return new Label
+            {
+                Font = UiTheme.Font(8.5F, FontStyle.Bold),
+                ForeColor = Color.White,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
         }
 
         private void SelectNavigationButton(string title, bool repaintImmediately)
@@ -250,6 +388,32 @@ namespace XiaoPuZhangGui.Forms
         private static string ResolveNavigationIconKey(string iconName)
         {
             return iconName == "home" ? "dashboard" : iconName;
+        }
+    }
+
+    internal sealed class RoundStatusDot : Panel
+    {
+        public RoundStatusDot()
+        {
+            SetStyle(
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw |
+                ControlStyles.UserPaint,
+                true);
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using (SolidBrush brush = new SolidBrush(BackColor))
+            {
+                e.Graphics.FillEllipse(brush, new Rectangle(0, 0, Width - 1, Height - 1));
+            }
         }
     }
 

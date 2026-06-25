@@ -126,9 +126,9 @@ namespace XiaoPuZhangGui.Utils
             return new Label
             {
                 Dock = DockStyle.Top,
-                Height = 46,
+                Height = 56,
                 Text = title,
-                Font = UiTheme.Font(28F, FontStyle.Bold),
+                Font = UiTheme.Font(31F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true
@@ -140,9 +140,9 @@ namespace XiaoPuZhangGui.Utils
             return new Label
             {
                 Dock = DockStyle.Top,
-                Height = 26,
+                Height = 30,
                 Text = text,
-                Font = UiTheme.Font(10.5F),
+                Font = UiTheme.Font(11.5F),
                 ForeColor = UiTheme.TextSecondary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true
@@ -308,9 +308,11 @@ namespace XiaoPuZhangGui.Utils
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = string.IsNullOrEmpty(illustrationName) ? 92 : 176,
+                Height = string.IsNullOrEmpty(illustrationName) ? 112 : 176,
                 BackColor = UiTheme.CardBackground,
-                Padding = new Padding(28, 18, 28, 18)
+                Padding = string.IsNullOrEmpty(illustrationName)
+                    ? new Padding(28, 13, 28, 13)
+                    : new Padding(28, 18, 28, 18)
             };
 
             TableLayoutPanel layout = new TableLayoutPanel
@@ -328,13 +330,7 @@ namespace XiaoPuZhangGui.Utils
                 layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430F));
             }
 
-            Panel textPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = UiTheme.CardBackground
-            };
-            textPanel.Controls.Add(CreatePageSubtitle(subtitle));
-            textPanel.Controls.Add(CreatePageTitle(title));
+            Panel textPanel = CreateHeaderTextPanel(title, subtitle);
             layout.Controls.Add(textPanel, 0, 0);
 
             if (action != null)
@@ -364,6 +360,38 @@ namespace XiaoPuZhangGui.Utils
         public static Panel CreatePageHeader(string title, string subtitle, string illustrationName)
         {
             return CreatePageHeader(title, subtitle, null, illustrationName);
+        }
+
+        private static Panel CreateHeaderTextPanel(string title, string subtitle)
+        {
+            Panel textPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = UiTheme.CardBackground
+            };
+
+            Label titleLabel = CreatePageTitle(title);
+            Label subtitleLabel = CreatePageSubtitle(subtitle);
+            titleLabel.Dock = DockStyle.None;
+            subtitleLabel.Dock = DockStyle.None;
+
+            textPanel.Controls.Add(titleLabel);
+            textPanel.Controls.Add(subtitleLabel);
+            EventHandler arrangeText = delegate
+            {
+                int availableWidth = Math.Max(0, textPanel.ClientSize.Width);
+                int blockHeight = titleLabel.Height + subtitleLabel.Height;
+                int top = Math.Max(0, (textPanel.ClientSize.Height - blockHeight) / 2);
+
+                titleLabel.Location = new Point(0, top);
+                titleLabel.Width = availableWidth;
+                subtitleLabel.Location = new Point(0, titleLabel.Bottom);
+                subtitleLabel.Width = availableWidth;
+            };
+            textPanel.Resize += arrangeText;
+            arrangeText(textPanel, EventArgs.Empty);
+
+            return textPanel;
         }
     }
 

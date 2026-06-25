@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -20,7 +21,7 @@ namespace XiaoPuZhangGui.Forms
         private readonly FlowLayoutPanel _navigationListPanel;
         private readonly Panel _contentPanel;
         private readonly Label _footerLabel;
-        private readonly Dictionary<string, Button> _navigationButtons;
+        private readonly Dictionary<string, SidebarNavigationButton> _navigationButtons;
 
         public MainForm()
         {
@@ -32,7 +33,7 @@ namespace XiaoPuZhangGui.Forms
             BackColor = Color.White;
             ApplyApplicationIcon();
 
-            _navigationButtons = new Dictionary<string, Button>();
+            _navigationButtons = new Dictionary<string, SidebarNavigationButton>();
 
             _navigationPanel = new Panel
             {
@@ -130,28 +131,19 @@ namespace XiaoPuZhangGui.Forms
 
         private void AddNavigationButton(string title, string description, string iconName)
         {
-            Button button = new Button
+            SidebarNavigationButton button = new SidebarNavigationButton
             {
                 Height = 60,
                 Width = _navigationListPanel.ClientSize.Width,
-                Text = "     " + title,
+                Text = title,
                 Tag = description,
-                TextAlign = ContentAlignment.MiddleLeft,
-                Padding = new Padding(18, 0, 0, 0),
-                FlatStyle = FlatStyle.Flat,
                 Font = UiTheme.Font(11F, FontStyle.Bold),
                 ForeColor = Color.White,
-                BackColor = UiTheme.SidebarDark,
-                Cursor = Cursors.Hand,
                 Margin = new Padding(0)
             };
 
-            button.FlatAppearance.BorderSize = 0;
-            button.FlatAppearance.MouseOverBackColor = UiTheme.SidebarDarkHover;
-            button.FlatAppearance.MouseDownBackColor = UiTheme.SidebarSelected;
             UiAssetHelper.ApplyIcon(button, "nav_" + ResolveNavigationIconKey(iconName), 22, Color.FromArgb(221, 235, 255));
-            button.ImageAlign = ContentAlignment.MiddleLeft;
-            button.TextImageRelation = TextImageRelation.Overlay;
+            button.MouseDown += delegate { SelectNavigationButton(title, true); };
             button.Click += delegate { ShowPage(title); };
 
             _navigationButtons.Add(title, button);
@@ -166,7 +158,7 @@ namespace XiaoPuZhangGui.Forms
                 width = _navigationPanel.Width;
             }
 
-            foreach (Button button in _navigationButtons.Values)
+            foreach (SidebarNavigationButton button in _navigationButtons.Values)
             {
                 button.Width = width;
             }
@@ -177,12 +169,7 @@ namespace XiaoPuZhangGui.Forms
 
         private void ShowPage(string title)
         {
-            foreach (KeyValuePair<string, Button> item in _navigationButtons)
-            {
-                item.Value.BackColor = item.Key == title
-                    ? UiTheme.SidebarSelected
-                    : UiTheme.SidebarDark;
-            }
+            SelectNavigationButton(title, true);
 
             _contentPanel.Controls.Clear();
 
@@ -241,6 +228,19 @@ namespace XiaoPuZhangGui.Forms
             ShowContentPage(new PlaceholderPage(title, description));
         }
 
+        private void SelectNavigationButton(string title, bool repaintImmediately)
+        {
+            foreach (KeyValuePair<string, SidebarNavigationButton> item in _navigationButtons)
+            {
+                bool selected = item.Key == title;
+                item.Value.SetSelected(selected);
+                if (repaintImmediately)
+                {
+                    item.Value.Update();
+                }
+            }
+        }
+
         private void ShowContentPage(Control page)
         {
             UiComponentHelper.NormalizeControlMetrics(page);
@@ -250,6 +250,105 @@ namespace XiaoPuZhangGui.Forms
         private static string ResolveNavigationIconKey(string iconName)
         {
             return iconName == "home" ? "dashboard" : iconName;
+        }
+    }
+
+    internal sealed class SidebarNavigationButton : Button
+    {
+        private bool _isHovered;
+        private bool _isSelected;
+
+        public SidebarNavigationButton()
+        {
+            SetStyle(
+                ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer |
+                ControlStyles.ResizeRedraw |
+                ControlStyles.UserPaint,
+                true);
+
+            BackColor = UiTheme.SidebarDark;
+            Cursor = Cursors.Hand;
+            FlatStyle = FlatStyle.Flat;
+            Padding = Padding.Empty;
+            UseVisualStyleBackColor = false;
+            FlatAppearance.BorderSize = 0;
+        }
+
+        public void SetSelected(bool selected)
+        {
+            if (_isSelected == selected)
+            {
+                return;
+            }
+
+            _isSelected = selected;
+            Invalidate();
+        }
+
+        protected override void OnMouseEnter(System.EventArgs e)
+        {
+            base.OnMouseEnter(e);
+            _isHovered = true;
+            Invalidate();
+        }
+
+        protected override void OnMouseLeave(System.EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            _isHovered = false;
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs pevent)
+        {
+            Graphics graphics = pevent.Graphics;
+            using (SolidBrush backgroundBrush = new SolidBrush(_isHovered && !_isSelected ? UiTheme.SidebarDarkHover : UiTheme.SidebarDark))
+            {
+                graphics.FillRectangle(backgroundBrush, ClientRectangle);
+            }
+
+            if (_isSelected)
+            {
+                using (SolidBrush selectedBrush = new SolidBrush(UiTheme.SidebarSelected))
+                {
+                    graphics.FillRectangle(selectedBrush, ClientRectangle);
+                }
+            }
+
+            DrawCenteredContent(graphics);
+
+            if (Focused)
+            {
+                ControlPaint.DrawFocusRectangle(graphics, new Rectangle(4, 4, Math.Max(0, Width - 8), Math.Max(0, Height - 8)));
+            }
+        }
+
+        private void DrawCenteredContent(Graphics graphics)
+        {
+            Image icon = Image;
+            int iconWidth = icon == null ? 0 : icon.Width;
+            int iconHeight = icon == null ? 0 : icon.Height;
+            int gap = icon == null ? 0 : 10;
+            Size textSize = TextRenderer.MeasureText(graphics, Text, Font, new Size(Width, Height), TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+            int totalWidth = iconWidth + gap + textSize.Width;
+            int left = Math.Max(0, ((Width - totalWidth) / 2) - 10);
+
+            if (icon != null)
+            {
+                int iconTop = Math.Max(0, (Height - iconHeight) / 2);
+                graphics.DrawImage(icon, new Rectangle(left, iconTop, iconWidth, iconHeight));
+                left += iconWidth + gap;
+            }
+
+            Rectangle textBounds = new Rectangle(left, 0, Math.Max(0, Width - left - 8), Height);
+            TextRenderer.DrawText(
+                graphics,
+                Text,
+                Font,
+                textBounds,
+                ForeColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine);
         }
     }
 }

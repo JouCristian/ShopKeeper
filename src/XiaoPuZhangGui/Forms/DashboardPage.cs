@@ -85,7 +85,7 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = UiTheme.CardBackground
             };
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 152F));
+            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124F));
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430F));
             headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -99,30 +99,29 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.CardBackground,
-                Margin = new Padding(0, 0, 16, 0)
+                Margin = new Padding(0, 0, 18, 0)
             };
 
-            Button refreshButton = UiComponentHelper.CreatePrimaryButton("刷新", 128);
-            refreshButton.Size = new Size(128, 52);
+            Button refreshButton = UiComponentHelper.CreatePrimaryButton("刷新", 96);
+            refreshButton.Size = new Size(96, 44);
             refreshButton.Margin = Padding.Empty;
             refreshButton.Tag = "KeepSize";
-            UiAssetHelper.ApplyIcon(refreshButton, "action_refresh", 18, Color.White);
             UiComponentHelper.CenterButtonIcon(refreshButton);
             refreshButton.Click += delegate { LoadDashboard(); };
             actionPanel.Controls.Add(refreshButton);
             actionPanel.Resize += delegate
             {
                 refreshButton.Location = new Point(
-                    Math.Max(0, (actionPanel.ClientSize.Width - refreshButton.Width) / 2),
+                    Math.Max(0, actionPanel.ClientSize.Width - refreshButton.Width - 6),
                     Math.Max(0, (actionPanel.ClientSize.Height - refreshButton.Height) / 2));
             };
 
             _titleLabel = new Label
             {
-                Dock = DockStyle.Top,
-                Height = 52,
+                Dock = DockStyle.None,
+                Height = 56,
                 Text = GetStoreName() + " · 首页看板",
-                Font = UiTheme.Font(28F, FontStyle.Bold),
+                Font = UiTheme.Font(31F, FontStyle.Bold),
                 ForeColor = UiTheme.TextPrimary,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true
@@ -130,10 +129,10 @@ namespace XiaoPuZhangGui.Forms
 
             _subtitleLabel = new Label
             {
-                Dock = DockStyle.Top,
-                Height = 26,
+                Dock = DockStyle.None,
+                Height = 30,
                 Text = string.Empty,
-                Font = UiTheme.Font(10.5F),
+                Font = UiTheme.Font(11.5F),
                 ForeColor = UiTheme.TextSecondary,
                 TextAlign = ContentAlignment.MiddleLeft
             };
@@ -147,8 +146,21 @@ namespace XiaoPuZhangGui.Forms
                 Margin = new Padding(12, 0, 0, 0)
             };
 
-            textPanel.Controls.Add(_subtitleLabel);
             textPanel.Controls.Add(_titleLabel);
+            textPanel.Controls.Add(_subtitleLabel);
+            EventHandler arrangeText = delegate
+            {
+                int blockHeight = _titleLabel.Height + _subtitleLabel.Height;
+                int top = Math.Max(0, (textPanel.ClientSize.Height - blockHeight) / 2);
+                int width = Math.Max(0, textPanel.ClientSize.Width);
+
+                _titleLabel.Location = new Point(0, top);
+                _titleLabel.Width = width;
+                _subtitleLabel.Location = new Point(0, _titleLabel.Bottom);
+                _subtitleLabel.Width = width;
+            };
+            textPanel.Resize += arrangeText;
+            arrangeText(textPanel, EventArgs.Empty);
             headerLayout.Controls.Add(textPanel, 0, 0);
             headerLayout.Controls.Add(actionPanel, 1, 0);
             headerLayout.Controls.Add(heroBox, 2, 0);

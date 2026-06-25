@@ -84,6 +84,7 @@ namespace XiaoPuZhangGui.Forms
             _grid.CellContentClick += Grid_CellContentClick;
             GridStyleHelper.ApplyStandardStyle(_grid);
             BuildColumns();
+            ApplyInventoryGridColumnLayout();
             Controls.Add(_grid);
 
             Controls.Add(CreateLabel("整单备注", 18, 586, 80));
@@ -188,6 +189,34 @@ namespace XiaoPuZhangGui.Forms
                 Width = 70,
                 UseColumnTextForButtonValue = true
             });
+        }
+
+        private void ApplyInventoryGridColumnLayout()
+        {
+            _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            SetColumnWidth(0, 150);
+            SetColumnWidth(1, 74);
+            SetColumnWidth(2, 92);
+            SetColumnWidth(3, 92);
+            SetColumnWidth(4, 92);
+            SetColumnWidth(5, 82);
+            SetColumnWidth(6, 96);
+            SetColumnWidth(7, 88);
+            SetColumnWidth(8, 116);
+            SetColumnWidth(9, 70);
+        }
+
+        private void SetColumnWidth(int columnIndex, int width)
+        {
+            if (columnIndex < 0 || columnIndex >= _grid.Columns.Count)
+            {
+                return;
+            }
+
+            DataGridViewColumn column = _grid.Columns[columnIndex];
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            column.MinimumWidth = width;
+            column.Width = width;
         }
 
         private void ProductSearchTextBox_KeyDown(object sender, KeyEventArgs e)

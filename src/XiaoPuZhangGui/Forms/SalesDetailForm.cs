@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Windows.Forms;
 using XiaoPuZhangGui.Models;
@@ -78,11 +79,12 @@ namespace XiaoPuZhangGui.Forms
                 SelectionMode = DataGridViewSelectionMode.FullRowSelect,
                 RowHeadersVisible = false,
                 BackgroundColor = Color.White,
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
                 DataSource = order.Items
             };
             GridStyleHelper.ApplyStandardStyle(grid);
 
-            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "商品", DataPropertyName = "ProductNameSnapshot", Width = 190 });
+            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "商品", DataPropertyName = "ProductNameSnapshot", FillWeight = 150, MinimumWidth = 120 });
             AddNumberColumn(grid, "数量", "Quantity", 90, "N3");
             AddNumberColumn(grid, "售价", "SalePriceSnapshot", 90, "N2");
             AddNumberColumn(grid, "成本价", "CostPriceSnapshot", 90, "N2");
@@ -108,7 +110,8 @@ namespace XiaoPuZhangGui.Forms
             {
                 HeaderText = headerText,
                 DataPropertyName = propertyName,
-                Width = width
+                FillWeight = width,
+                MinimumWidth = Math.Min(width, 80)
             };
             column.DefaultCellStyle.Format = format;
             column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;

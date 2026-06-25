@@ -8,7 +8,7 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class SalesManagementPage : UserControl
+    internal sealed class SalesManagementPage : UserControl, IUnsavedChangesAware
     {
         private readonly SalesService _salesService;
         private readonly BindingList<SalesLineView> _lines;
@@ -131,6 +131,22 @@ namespace XiaoPuZhangGui.Forms
             LoadProducts();
             LoadTodayOrders();
             RefreshTotals();
+        }
+
+        public bool HasUnsavedChanges
+        {
+            get
+            {
+                return _lines.Count > 0
+                    || (_remarkTextBox != null && !string.IsNullOrWhiteSpace(_remarkTextBox.Text))
+                    || (_debtorNameTextBox != null && !string.IsNullOrWhiteSpace(_debtorNameTextBox.Text))
+                    || (_lines.Count > 0 && _paidAmountTouched);
+            }
+        }
+
+        public string UnsavedChangesDescription
+        {
+            get { return "当前销售单尚未保存。"; }
         }
 
         private void BuildInputPanel(Panel inputPanel)

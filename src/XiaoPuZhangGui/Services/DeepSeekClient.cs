@@ -59,6 +59,14 @@ namespace XiaoPuZhangGui.Services
             return await SendChatAsync(settings, messages, cancellationToken, false);
         }
 
+        public async Task<AiResponseResult> SendJsonChatAsync(
+            AiSettings settings,
+            List<AiChatMessage> messages,
+            CancellationToken cancellationToken)
+        {
+            return await SendChatAsync(settings, messages, cancellationToken, true);
+        }
+
         public async Task<AiActionDraftParseResult> ParseActionDraftAsync(
             string userText,
             AiStoreProfile profile,

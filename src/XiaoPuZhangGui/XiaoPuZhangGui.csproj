@@ -85,6 +85,7 @@
     <Compile Include="Models\AiActionDraftParseResult.cs" />
     <Compile Include="Models\AiActionExecutionResult.cs" />
     <Compile Include="Models\AiIntentResult.cs" />
+    <Compile Include="Models\AiSemanticIntentResult.cs" />
     <Compile Include="Models\AiPurchaseDraft.cs" />
     <Compile Include="Models\AiPurchaseDraftReview.cs" />
     <Compile Include="Models\AiPurchaseExecutionResult.cs" />
@@ -130,6 +131,7 @@
     <Compile Include="Services\AiConversationService.cs" />
     <Compile Include="Services\AiIntentRouter.cs" />
     <Compile Include="Services\AiLocalQueryService.cs" />
+    <Compile Include="Services\AiSemanticIntentService.cs" />
     <Compile Include="Services\AiOperationLogService.cs" />
     <Compile Include="Services\AiPurchaseDraftService.cs" />
     <Compile Include="Services\AiQuickQuestionService.cs" />

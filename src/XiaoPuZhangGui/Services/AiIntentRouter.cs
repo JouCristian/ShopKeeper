@@ -72,25 +72,53 @@ namespace XiaoPuZhangGui.Services
 
         private static void ScoreQuery(AiIntentResult result, string text)
         {
-            if (ContainsAny(text, "多少钱", "售价", "卖多少", "价格", "多少元", "多贵"))
+            if (LooksLikeNewProductAdvice(text))
+            {
+                result.QueryKind = "new_product_advice";
+                result.QueryConfidence = Math.Max(result.QueryConfidence, 0.99m);
+            }
+
+            if (LooksLikeRestockAdvice(text))
+            {
+                result.QueryKind = "restock_advice";
+                result.QueryConfidence = Math.Max(result.QueryConfidence, 0.99m);
+            }
+
+            if (result.QueryKind != "restock_advice" && LooksLikeCategoryLowStockQuery(text))
+            {
+                result.QueryKind = "category_low_stock";
+                result.QueryConfidence = Math.Max(result.QueryConfidence, 0.99m);
+            }
+            else if (result.QueryKind != "restock_advice" && LooksLikeCategoryQuery(text))
+            {
+                result.QueryKind = "category_stock";
+                result.QueryConfidence = Math.Max(result.QueryConfidence, 0.98m);
+            }
+
+            bool hasSpecificBusinessQuery = result.QueryKind == "restock_advice"
+                || result.QueryKind == "new_product_advice"
+                || result.QueryKind == "category_low_stock"
+                || result.QueryKind == "category_stock";
+
+            if (!hasSpecificBusinessQuery && ContainsAny(text, "多少钱", "售价", "卖多少", "价格", "多少元", "多贵"))
             {
                 result.QueryKind = "product_price";
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.95m);
             }
 
-            if (ContainsAny(text, "库存多少", "库存有多少", "还剩", "剩多少", "有多少", "库存", "还有多少", "还有几", "还剩几", "剩几"))
+            if (!hasSpecificBusinessQuery && ContainsAny(text, "库存多少", "库存有多少", "还剩", "剩多少", "有多少", "库存", "还有多少", "还有几", "还剩几", "剩几"))
             {
                 result.QueryKind = "product_stock";
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.92m);
             }
 
-            if (ContainsAny(text, "有哪些商品", "现在有什么商品", "商品列表", "全部商品", "所有商品", "店里有什么"))
+            if (!hasSpecificBusinessQuery && ContainsAny(text, "有哪些商品", "现在有什么商品", "商品列表", "全部商品", "所有商品", "店里有什么"))
             {
                 result.QueryKind = "all_inventory";
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.96m);
             }
 
-            if (ContainsAny(text, "谁还欠", "谁欠账", "谁欠钱", "欠多少钱", "还欠账", "欠款多少", "欠账客户", "未结清赊账", "没结清", "未还清", "未收回", "欠账情况"))
+            if (ContainsAny(text, "谁还欠", "谁欠账", "谁欠钱", "谁赊账", "有谁赊账", "有没有人赊账", "有哪些赊账客户", "赊账客户", "欠多少钱", "还欠账", "欠款多少", "欠账客户", "未结清赊账", "没结清", "未还清", "未收回", "谁没给钱", "谁还没结账", "谁还欠钱", "还没还钱", "欠账情况"))
             {
                 result.QueryKind = "credit_customers";
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.94m);
@@ -102,13 +130,19 @@ namespace XiaoPuZhangGui.Services
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.93m);
             }
 
-            if (ContainsAny(text, "库存低", "低库存", "快没货", "快没了", "没货了", "快卖完", "缺货", "缺货商品", "哪些商品少", "库存不够", "不够卖"))
+            if (ContainsAny(text, "库存低", "低库存", "快没货", "快没了", "没货了", "快卖完", "缺货", "缺货商品", "哪些商品少", "库存不够", "不够卖", "哪些货该补", "哪些商品需要补货", "该补哪些"))
             {
                 result.QueryKind = "low_stock";
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.93m);
             }
 
-            if (ContainsAny(text, "报废损失", "有没有报废", "最近有没有报废", "报废多少", "报废损失多少"))
+            if (ContainsAny(text, "报废记录", "所有报废记录", "全部报废记录", "查报废", "查一下报废"))
+            {
+                result.QueryKind = "scrap_records";
+                result.QueryConfidence = Math.Max(result.QueryConfidence, 0.97m);
+            }
+
+            if (ContainsAny(text, "报废损失", "有没有报废", "最近有没有报废", "报废多少", "报废损失多少", "这个月报废损失"))
             {
                 result.QueryKind = "scrap_loss";
                 result.QueryConfidence = Math.Max(result.QueryConfidence, 0.96m);
@@ -158,6 +192,11 @@ namespace XiaoPuZhangGui.Services
                 SetAnalysis(result, "hotSlow", 0.95m);
             }
 
+            if (ContainsAny(text, "今天利润", "今日利润", "利润怎么样", "毛利怎么样", "净利润怎么样", "今天毛利", "今日毛利"))
+            {
+                SetAnalysis(result, "today", 0.95m);
+            }
+
             if (ContainsAny(text, "分析", "建议", "小结", "报告", "报表"))
             {
                 result.AnalysisConfidence = Math.Max(result.AnalysisConfidence, 0.72m);
@@ -170,9 +209,21 @@ namespace XiaoPuZhangGui.Services
 
         private static void ScoreAction(AiIntentResult result, string text)
         {
-            if (LooksLikeExplicitQuestion(text) || ContainsAny(text, "补货建议", "库存建议", "赊账客户提醒", "库存结构", "分析"))
+            if (LooksLikeExplicitQuestion(text) || LooksLikeRestockAdvice(text) || ContainsAny(text, "补货建议", "库存建议", "赊账客户提醒", "库存结构", "分析"))
             {
                 return;
+            }
+
+            if (ContainsAny(text, "搞错了", "不对", "重新记", "刚才说错了", "说错了")
+                && ContainsAny(text, "瓶", "包", "袋", "条", "件", "个", "盒", "罐", "支"))
+            {
+                result.ActionConfidence = Math.Max(result.ActionConfidence, 0.88m);
+            }
+
+            if (ContainsAny(text, "涨价", "降价", "都涨", "都降") && ContainsAny(text, "所有", "全部", "整类", "这一类"))
+            {
+                result.ActionConfidence = Math.Max(result.ActionConfidence, 0.86m);
+                result.IntentKeys.Add("batch_price_update");
             }
 
             if (ContainsAny(text, "进货", "入库", "新进", "进了", "采购了", "买了一批", "登记进货"))
@@ -262,7 +313,89 @@ namespace XiaoPuZhangGui.Services
         {
             return ContainsAny(text, "只是", "好奇", "查询", "查一下", "请问", "看看", "哪些", "谁", "多少", "几", "有没有", "是否", "吗", "呢")
                 || ContainsAny(text, "报废损失", "卖得好", "卖得慢", "卖不动", "不赚钱", "毛利低", "利润低")
+                || LooksLikeRestockAdvice(text)
                 || (ContainsAny(text, "多少钱", "售价是多少", "价格是多少", "还剩多少", "库存多少", "还有多少", "还有几", "还剩几") && !HasExplicitActionCue(text));
+        }
+
+        private static bool LooksLikeCategoryQuery(string text)
+        {
+            if (!ContainsCategoryAlias(text))
+            {
+                return false;
+            }
+
+            return ContainsAny(text, "有哪些", "有什么", "哪些", "商品", "库存", "分类", "类", "查一下", "查询", "看看", "不知道", "还有多少", "还有几", "还剩", "剩多少", "呢", "嘛", "那", "我说的是", "就是")
+                || ContainsAny(text, "目前库存", "当前库存", "现在库存", "库存里", "店里");
+        }
+
+        private static bool LooksLikeCategoryLowStockQuery(string text)
+        {
+            return ContainsCategoryAlias(text)
+                && ContainsAny(text, "快没货", "快没了", "低库存", "库存低", "缺货", "该补", "补货", "需要补", "不够卖");
+        }
+
+        private static bool LooksLikeRestockAdvice(string text)
+        {
+            if (ContainsAny(text, "哪些货该进", "哪些货该补", "该进了", "该补什么", "补什么货", "进什么货", "进点什么", "补点什么"))
+            {
+                return true;
+            }
+
+            if (ContainsAny(text, "建议", "根据库存", "库存情况", "最近销售", "该补", "该进", "补货", "进货")
+                && ContainsAny(text, "什么货", "什么", "哪些", "进点", "补点", "看看", "分析"))
+            {
+                return true;
+            }
+
+            return ContainsAny(text,
+                "根据库存建议进什么货",
+                "根据我的库存里的商品",
+                "建议我进一些什么货",
+                "建议进一些什么货",
+                "建议进什么货",
+                "该补哪些货",
+                "哪些货该补",
+                "哪些商品需要补货",
+                "现在应该进点什么",
+                "应该进点什么",
+                "该进什么",
+                "进货建议",
+                "补货建议",
+                "库存情况帮我给点进货建议",
+                "帮我看看该进什么",
+                "只看饮料的话该补什么",
+                "该补什么");
+        }
+
+        private static bool LooksLikeNewProductAdvice(string text)
+        {
+            if (ContainsAny(text, "新品", "新商品", "额外进", "还可以进", "还能进", "扩品", "拓展", "品类扩展"))
+            {
+                return true;
+            }
+
+            return ContainsAny(text, "除了", "之外", "不存在", "没有的")
+                && ContainsAny(text, "进哪些", "进什么", "进点什么", "商品", "货", "售卖", "卖");
+        }
+
+        private static bool ContainsCategoryAlias(string text)
+        {
+            if (ContainsAny(text, "饮料", "饮品", "喝的", "烟酒", "香烟", "烟草", "抽的", "零食", "吃的", "小吃", "薯片", "辣条", "日用品", "生活用品", "用的", "食品", "酒水"))
+            {
+                return true;
+            }
+
+            if (ContainsAny(text, "烟") && ContainsAny(text, "有哪些", "有什么", "哪些", "分类", "类", "库存", "目前", "当前", "现在"))
+            {
+                return true;
+            }
+
+            if (ContainsAny(text, "水") && ContainsAny(text, "有哪些", "有什么", "哪些", "喝的", "饮品", "饮料", "分类", "类"))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private static void SetAnalysis(AiIntentResult result, string analysisKey, decimal confidence)

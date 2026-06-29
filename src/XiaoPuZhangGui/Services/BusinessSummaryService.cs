@@ -23,6 +23,14 @@ namespace XiaoPuZhangGui.Services
             return BuildPeriodSummary("今日收入分析", start, end, "请分析今天的收入、实收、赊账、利润、异常点，并给出 3 到 5 条建议。", true);
         }
 
+        public BusinessSummaryResult BuildYesterdaySummary()
+        {
+            DateTime day = DateTime.Today.AddDays(-1);
+            DateTime start = ReportService.GetDayStart(day);
+            DateTime end = ReportService.GetNextDayStart(day);
+            return BuildPeriodSummary("昨日经营分析", start, end, "请分析昨天的销售、实收、赊账、利润和异常点，并给出 3 到 5 条建议。", true);
+        }
+
         public BusinessSummaryResult BuildWeekSummary()
         {
             DateTime today = DateTime.Today;

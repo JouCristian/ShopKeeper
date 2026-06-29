@@ -122,23 +122,25 @@ namespace XiaoPuZhangGui.Forms
             addGroup.Controls.Add(CreateLabel("分类", 28, 336, 42));
             _productCategoryComboBox = new ComboBox
             {
-                Location = new Point(376, 28),
-                Size = new Size(120, 30),
+                Location = new Point(1, 1),
+                Size = new Size(118, 28),
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Font = new Font("Microsoft YaHei UI", 11F)
+                Font = new Font("Microsoft YaHei UI", 11F),
+                FlatStyle = FlatStyle.Flat
             };
             _productCategoryComboBox.SelectedIndexChanged += delegate { LoadProducts(); };
-            addGroup.Controls.Add(_productCategoryComboBox);
+            AddBorderedComboBox(addGroup, _productCategoryComboBox, new Point(376, 28), new Size(120, 30));
 
             addGroup.Controls.Add(CreateLabel("商品", 28, 514, 44));
             _productComboBox = new ComboBox
             {
-                Location = new Point(556, 28),
-                Size = new Size(205, 30),
-                DropDownStyle = ComboBoxStyle.DropDownList
+                Location = new Point(1, 1),
+                Size = new Size(203, 28),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat
             };
             _productComboBox.SelectedIndexChanged += ProductComboBox_SelectedIndexChanged;
-            addGroup.Controls.Add(_productComboBox);
+            AddBorderedComboBox(addGroup, _productComboBox, new Point(556, 28), new Size(205, 30));
 
             _productInfoLabel = new Label
             {
@@ -544,6 +546,19 @@ namespace XiaoPuZhangGui.Forms
                 Size = new Size(width, 30),
                 TextAlign = ContentAlignment.MiddleLeft
             };
+        }
+
+        private static void AddBorderedComboBox(Control parent, ComboBox comboBox, Point location, Size size)
+        {
+            ThemedCardPanel borderPanel = new ThemedCardPanel
+            {
+                Location = location,
+                Size = size,
+                BackColor = Color.White,
+                BorderColor = UiTheme.CardBorder
+            };
+            borderPanel.Controls.Add(comboBox);
+            parent.Controls.Add(borderPanel);
         }
 
         private static NumericUpDown CreateNumeric(int top, int left, int decimalPlaces)

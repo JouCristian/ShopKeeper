@@ -27,8 +27,10 @@ namespace XiaoPuZhangGui.Forms
         private readonly AiPurchaseDraftService _purchaseDraftService;
         private readonly AiActionDraftService _actionDraftService;
         private readonly AiIntentRouter _intentRouter;
+        private readonly AiSemanticIntentService _semanticIntentService;
         private readonly AiLocalQueryService _localQueryService;
         private readonly AiQuickQuestionService _quickQuestionService;
+        private readonly ProductService _productService;
         private readonly AiStoreProfileService _storeProfileService;
         private readonly Action<NetworkStatusResult> _networkStatusChanged;
         private readonly Action _aiSettingsChanged;
@@ -93,6 +95,15 @@ namespace XiaoPuZhangGui.Forms
         private bool _actionReceivedAmountManualEdit;
         private bool _profilePromptShown;
         private bool _profilePromptPending;
+        private string _lastIntentType = string.Empty;
+        private string _lastQueryType = string.Empty;
+        private string _lastSubject = string.Empty;
+        private string _lastCategoryName = string.Empty;
+        private string _lastActionIntent = string.Empty;
+        private decimal _lastBatchPriceDelta;
+        private string _lastCandidateQueryKind = string.Empty;
+        private readonly List<Product> _lastCandidateProducts = new List<Product>();
+        private readonly List<string> _lastCancelledDrafts = new List<string>();
 
         public AiAssistantPage(
             NetworkStatusService networkStatusService,
@@ -108,8 +119,10 @@ namespace XiaoPuZhangGui.Forms
             _purchaseDraftService = new AiPurchaseDraftService();
             _actionDraftService = new AiActionDraftService();
             _intentRouter = new AiIntentRouter();
+            _semanticIntentService = new AiSemanticIntentService();
             _localQueryService = new AiLocalQueryService();
             _quickQuestionService = new AiQuickQuestionService();
+            _productService = new ProductService();
             _storeProfileService = new AiStoreProfileService();
             _networkStatus = networkStatus ?? NetworkStatusResult.Unknown();
             _networkStatusChanged = networkStatusChanged;
@@ -967,6 +980,60 @@ namespace XiaoPuZhangGui.Forms
         {
             RemoveEmptyStateImage();
             AddChatBubble(userText, true, true);
+            SetSendingState(true);
+            RichTextBox waitingBubble = AddChatBubble("正在理解你的问题……", false, false);
+
+            AiSemanticIntentResult semanticIntent = await TryClassifySemanticIntentAsync(userText);
+            if (semanticIntent.Success)
+            {
+                SetBubbleContent(waitingBubble, "正在判断需要读取哪些本地数据……", false);
+                ResizeBubble(waitingBubble);
+
+                if (semanticIntent.IntentType == "unsafe")
+                {
+                    string answer = "这个操作风险太高，我不能直接执行。涉及清空、删除、撤销或绕过确认的请求，都需要你到对应页面手动核对处理。";
+                    SetExistingBubbleAsLocalAnswer(waitingBubble, answer, "system_local", "已读取：语义识别结果\r\n未读取：本地经营数据\r\n数据缺失：危险动作已拦截");
+                    SetSendingState(false);
+                    return;
+                }
+
+                if (await TryHandleSemanticIntentAsync(userText, semanticIntent, waitingBubble))
+                {
+                    return;
+                }
+
+                if (semanticIntent.RouteType == AiIntentResult.RouteChat)
+                {
+                    BusinessSummaryResult chatContext = BusinessSummaryResult.Fail("普通对话", "NO_BUSINESS_CONTEXT");
+                    string chatPrompt = BuildAiUserPrompt(chatContext, userText);
+                    await SendToAiAsync(chatPrompt, chatContext, waitingBubble);
+                    return;
+                }
+
+                SetBubbleContent(waitingBubble, string.IsNullOrWhiteSpace(semanticIntent.ClarificationQuestion)
+                    ? "我还需要你再说具体一点，比如要查库存、看利润、问补货，还是登记销售/入库。"
+                    : semanticIntent.ClarificationQuestion, false);
+                ResizeBubble(waitingBubble);
+                string question = string.IsNullOrWhiteSpace(semanticIntent.ClarificationQuestion)
+                    ? "我还需要你再说具体一点，比如要查库存、看利润、问补货，还是登记销售/入库。"
+                    : semanticIntent.ClarificationQuestion;
+                SaveLocalMessage(question, "system_local", "已读取：语义识别结果\r\n未读取：本地经营数据\r\n数据缺失：意图需要确认");
+                SetSendingState(false);
+                return;
+            }
+
+            SetBubbleContent(waitingBubble, "AI 理解失败，正在使用本地规则兜底……", false);
+            ResizeBubble(waitingBubble);
+
+            if (TryHandleContextualFollowUp(userText, waitingBubble))
+            {
+                return;
+            }
+
+            if (TryHandleBatchPriceUpdatePreview(userText, waitingBubble))
+            {
+                return;
+            }
 
             string routedText = ResolveContextualUserText(userText);
             AiIntentResult intent = _intentRouter.Route(routedText);
@@ -974,13 +1041,19 @@ namespace XiaoPuZhangGui.Forms
             {
                 string answer = _localQueryService.Answer(routedText, intent);
                 _lastAssistantAnswerText = answer;
-                AddPersistentLocalBubble(answer, "system_local", BuildLocalQueryStorageContext(intent));
+                SetExistingBubbleAsLocalAnswer(waitingBubble, answer, "system_local", BuildLocalQueryStorageContext(intent));
+                UpdateConversationContext(intent, routedText);
+                SetSendingState(false);
                 return;
             }
 
             if (intent.RouteType == AiIntentResult.RouteAnalysis)
             {
-                await SendAnalysisAsync(userText, intent.AnalysisKey);
+                _lastIntentType = AiIntentResult.RouteAnalysis;
+                _lastQueryType = intent.AnalysisKey;
+                _lastSubject = routedText;
+                ClearCandidateContext();
+                await SendAnalysisAsync(userText, intent.AnalysisKey, waitingBubble);
                 return;
             }
 
@@ -989,19 +1062,180 @@ namespace XiaoPuZhangGui.Forms
                 string question = string.IsNullOrWhiteSpace(intent.FollowUpQuestion)
                     ? "你是想查询信息，还是要执行入库、销售、改价等操作？"
                     : intent.FollowUpQuestion;
+                _lastIntentType = AiIntentResult.RouteUnknown;
+                _lastQueryType = string.Empty;
                 _lastAssistantAnswerText = question;
-                AddPersistentLocalBubble(question, "system_local", "已读取：未使用本地经营数据\r\n未读取：今日销售摘要、库存摘要、赊账记录、进货记录\r\n数据缺失：意图不明确");
+                SetExistingBubbleAsLocalAnswer(waitingBubble, question, "system_local", "已读取：未使用本地经营数据\r\n未读取：今日销售摘要、库存摘要、赊账记录、进货记录\r\n数据缺失：意图不明确");
+                SetSendingState(false);
                 return;
             }
 
-            if (intent.IsAction && await TryHandleActionDraftAsync(routedText, intent))
+            if (intent.IsAction && await TryHandleActionDraftAsync(routedText, intent, waitingBubble))
             {
+                _lastIntentType = AiIntentResult.RouteAction;
+                _lastQueryType = string.Empty;
+                ClearCandidateContext();
                 return;
             }
 
             BusinessSummaryResult liveContext = BusinessSummaryResult.Fail("普通对话", "NO_BUSINESS_CONTEXT");
             string prompt = BuildAiUserPrompt(liveContext, userText);
-            await SendToAiAsync(prompt, liveContext);
+            await SendToAiAsync(prompt, liveContext, waitingBubble);
+        }
+
+        private async Task<AiSemanticIntentResult> TryClassifySemanticIntentAsync(string userText)
+        {
+            AiSettings settings = _settingsService.Load();
+            settings.AiApiKey = _settingsService.GetApiKey();
+            if (string.IsNullOrWhiteSpace(settings.AiApiKey))
+            {
+                return new AiSemanticIntentResult { Success = false, ErrorMessage = "API Key is empty." };
+            }
+
+            try
+            {
+                using (CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(25)))
+                {
+                    return await _semanticIntentService.ClassifyAsync(
+                        userText,
+                        _currentConversation == null ? null : _currentConversation.Messages,
+                        settings,
+                        _storeProfileService.Load(),
+                        cts.Token);
+                }
+            }
+            catch
+            {
+                return new AiSemanticIntentResult { Success = false, ErrorMessage = "Semantic classifier failed." };
+            }
+        }
+
+        private async Task<bool> TryHandleSemanticIntentAsync(string userText, AiSemanticIntentResult semantic, RichTextBox waitingBubble)
+        {
+            if (semantic == null || !semantic.Success || semantic.Confidence < 0.55m)
+            {
+                return false;
+            }
+
+            AiIntentResult intent = semantic.ToIntentResult();
+            string routedText = semantic.BuildSubjectText(userText);
+
+            if (intent.RouteType == AiIntentResult.RouteQuery)
+            {
+                SetBubbleContent(waitingBubble, "正在读取本地经营数据……", false);
+                ResizeBubble(waitingBubble);
+                string answer = _localQueryService.Answer(routedText, intent);
+                _lastAssistantAnswerText = answer;
+                await SendSemanticQueryAnswerAsync(userText, routedText, answer, intent, waitingBubble);
+                UpdateConversationContext(intent, routedText);
+                return true;
+            }
+
+            if (intent.RouteType == AiIntentResult.RouteAnalysis)
+            {
+                _lastIntentType = AiIntentResult.RouteAnalysis;
+                _lastQueryType = intent.AnalysisKey;
+                _lastSubject = routedText;
+                ClearCandidateContext();
+                await SendAnalysisAsync(userText, intent.AnalysisKey, waitingBubble);
+                return true;
+            }
+
+            if (intent.RouteType == AiIntentResult.RouteUnknown && semantic.NeedsClarification)
+            {
+                string question = string.IsNullOrWhiteSpace(semantic.ClarificationQuestion)
+                    ? "我还需要你再说具体一点，比如要查库存、看利润、问补货，还是登记销售/入库。"
+                    : semantic.ClarificationQuestion;
+                _lastIntentType = AiIntentResult.RouteUnknown;
+                _lastQueryType = string.Empty;
+                _lastAssistantAnswerText = question;
+                SetExistingBubbleAsLocalAnswer(waitingBubble, question, "system_local", "已读取：语义识别结果\r\n未读取：本地经营数据\r\n数据缺失：用户意图需要确认");
+                SetSendingState(false);
+                return true;
+            }
+
+            if (intent.IsAction)
+            {
+                if (semantic.SemanticTask == "batch_price_update" || semantic.ActionType == "batch_price_update" || semantic.ActionType == "product_price_update")
+                {
+                    if (TryHandleSemanticBatchPriceUpdatePreview(semantic, waitingBubble))
+                    {
+                        return true;
+                    }
+
+                    if (TryHandleBatchPriceUpdatePreview(userText, waitingBubble))
+                    {
+                        return true;
+                    }
+                }
+
+                if (await TryHandleActionDraftAsync(userText, intent, waitingBubble))
+                {
+                    _lastIntentType = AiIntentResult.RouteAction;
+                    _lastQueryType = string.Empty;
+                    ClearCandidateContext();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private async Task SendSemanticQueryAnswerAsync(string userText, string routedText, string localAnswer, AiIntentResult intent, RichTextBox waitingBubble)
+        {
+            string contextInfo = BuildLocalQueryStorageContext(intent);
+            AiSettings settings = _settingsService.Load();
+            settings.AiApiKey = _settingsService.GetApiKey();
+            if (string.IsNullOrWhiteSpace(settings.AiApiKey))
+            {
+                SetExistingBubbleAsLocalAnswer(waitingBubble, localAnswer, "system_local", contextInfo);
+                SetSendingState(false);
+                return;
+            }
+
+            SetSendingState(true);
+            SetBubbleContent(waitingBubble, "已读取本地数据，正在整理回答……", false);
+            ResizeBubble(waitingBubble);
+            try
+            {
+                using (CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(65)))
+                {
+                    _activeRequestCancellation = cts;
+                    DeepSeekClient client = new DeepSeekClient(settings.AiBaseUrl, settings.AiModel, settings.AiApiKey);
+                    AiResponseResult result = await SendChatWithRetryAsync(
+                        client,
+                        settings,
+                        BuildSemanticGroundedMessages(userText, routedText, localAnswer),
+                        cts.Token,
+                        waitingBubble,
+                        contextInfo);
+
+                    string finalAnswer = result.Success ? result.Content : localAnswer;
+                    _lastAssistantAnswerText = finalAnswer;
+                    SetBubbleContent(waitingBubble, BuildAssistantDisplayText(finalAnswer, contextInfo, DateTime.Now), false);
+                    if (!result.Success)
+                    {
+                        SetBubbleTextColor(waitingBubble, UiTheme.DangerRed);
+                    }
+
+                    ResizeBubble(waitingBubble);
+                    SaveLocalMessage(finalAnswer, result.Success ? "chat" : "system_local", contextInfo);
+                    RequestScrollChatToBottom();
+                }
+            }
+            catch
+            {
+                _lastAssistantAnswerText = localAnswer;
+                SetBubbleContent(waitingBubble, BuildAssistantDisplayText(localAnswer, contextInfo, DateTime.Now), false);
+                ResizeBubble(waitingBubble);
+                SaveLocalMessage(localAnswer, "system_local", contextInfo);
+                RequestScrollChatToBottom();
+            }
+            finally
+            {
+                _activeRequestCancellation = null;
+                SetSendingState(false);
+            }
         }
 
         private string ResolveContextualUserText(string userText)
@@ -1018,6 +1252,11 @@ namespace XiaoPuZhangGui.Forms
                 && string.Equals((messages[startIndex].Content ?? string.Empty).Trim(), (userText ?? string.Empty).Trim(), StringComparison.Ordinal))
             {
                 startIndex--;
+            }
+
+            if (LooksLikeCorrectionSalesText(userText) && HasRecentCancelledDraftContext(messages, startIndex))
+            {
+                return NormalizeCorrectionToSaleText(userText);
             }
 
             if (LooksLikeCreditContinuation(userText) && HasRecentQueryKind(messages, startIndex, "credit_customers"))
@@ -1080,6 +1319,265 @@ namespace XiaoPuZhangGui.Forms
             return userText;
         }
 
+        private bool TryHandleContextualFollowUp(string userText)
+        {
+            return TryHandleContextualFollowUp(userText, null);
+        }
+
+        private bool TryHandleContextualFollowUp(string userText, RichTextBox waitingBubble)
+        {
+            string value = (userText ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            if (_lastCandidateProducts.Count > 0)
+            {
+                if (LooksLikeAllCandidateRequest(value))
+                {
+                    string answer = _localQueryService.AnswerForProducts(_lastCandidateProducts, _lastCandidateQueryKind);
+                    AddContextualLocalAnswer(answer, _lastCandidateQueryKind, value, false, waitingBubble);
+                    return true;
+                }
+
+                int candidateIndex = ParseCandidateIndex(value);
+                if (candidateIndex >= 0 && candidateIndex < _lastCandidateProducts.Count)
+                {
+                    Product product = _lastCandidateProducts[candidateIndex];
+                    string answer = _localQueryService.AnswerForProduct(product, _lastCandidateQueryKind);
+                    AddContextualLocalAnswer(answer, _lastCandidateQueryKind, FormatProductName(product), false, waitingBubble);
+                    return true;
+                }
+
+                Product matchedCandidate = FindCandidateProduct(value);
+                if (matchedCandidate != null)
+                {
+                    string answer = _localQueryService.AnswerForProduct(matchedCandidate, _lastCandidateQueryKind);
+                    AddContextualLocalAnswer(answer, _lastCandidateQueryKind, FormatProductName(matchedCandidate), false, waitingBubble);
+                    return true;
+                }
+            }
+
+            string continuationText = ResolveSimpleQueryContinuation(value);
+            if (!string.IsNullOrWhiteSpace(continuationText))
+            {
+                AiIntentResult intent = _intentRouter.Route(continuationText);
+                if (intent.RouteType == AiIntentResult.RouteQuery)
+                {
+                    string answer = _localQueryService.Answer(continuationText, intent);
+                    AddContextualLocalAnswer(answer, intent.QueryKind, continuationText, true, waitingBubble);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryHandleBatchPriceUpdatePreview(string userText)
+        {
+            return TryHandleBatchPriceUpdatePreview(userText, null);
+        }
+
+        private bool TryHandleBatchPriceUpdatePreview(string userText, RichTextBox waitingBubble)
+        {
+            BatchPriceIntent intent = ParseBatchPriceIntent(userText);
+            if (intent == null)
+            {
+                intent = ResolveBatchPriceFollowUp(userText);
+            }
+
+            if (intent == null)
+            {
+                return false;
+            }
+
+            string resolvedCategory = _localQueryService.ResolveCategoryNameFromText(intent.Category);
+            if (!string.IsNullOrWhiteSpace(resolvedCategory))
+            {
+                intent.Category = resolvedCategory;
+            }
+
+            return ShowBatchPriceUpdatePreview(intent.Category, intent.Delta, userText, waitingBubble);
+        }
+
+        private bool TryHandleSemanticBatchPriceUpdatePreview(AiSemanticIntentResult semantic, RichTextBox waitingBubble)
+        {
+            if (semantic == null || semantic.SemanticTask != "batch_price_update")
+            {
+                return false;
+            }
+
+            string category = semantic.CategoryName;
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                category = _lastCategoryName;
+            }
+
+            if (string.IsNullOrWhiteSpace(category) || semantic.ActionPriceDelta == 0m)
+            {
+                return false;
+            }
+
+            return ShowBatchPriceUpdatePreview(category, semantic.ActionPriceDelta, semantic.NormalizedText, waitingBubble);
+        }
+
+        private bool ShowBatchPriceUpdatePreview(string category, decimal delta, string subjectText, RichTextBox waitingBubble)
+        {
+            string resolvedCategory = _localQueryService.ResolveCategoryNameFromText(category);
+            if (!string.IsNullOrWhiteSpace(resolvedCategory))
+            {
+                category = resolvedCategory;
+            }
+
+            IList<Product> products = _productService.GetActiveProducts();
+            List<Product> matches = new List<Product>();
+            foreach (Product product in products)
+            {
+                if (product != null && IsSameCategory(product.CategoryName, category))
+                {
+                    matches.Add(product);
+                }
+            }
+
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("已识别为高风险批量改价。");
+            builder.AppendLine("范围：分类 = " + category);
+            builder.AppendLine("调整方式：当前售价 " + (delta >= 0 ? "+" : "-") + Math.Abs(delta).ToString("0.##") + " 元");
+            builder.AppendLine();
+
+            if (matches.Count == 0)
+            {
+                builder.AppendLine("当前没有找到分类为“" + category + "”的在售商品，所以没有生成可执行预览。");
+            }
+            else
+            {
+                builder.AppendLine("批量改价预览：");
+                for (int index = 0; index < matches.Count; index++)
+                {
+                    Product product = matches[index];
+                    decimal newPrice = Math.Max(0m, product.DefaultPrice + delta);
+                    builder.AppendLine((index + 1) + ". " + FormatProductName(product)
+                        + "，当前售价 " + product.DefaultPrice.ToString("0.00")
+                        + " 元，新售价 " + newPrice.ToString("0.00") + " 元");
+                }
+            }
+
+            builder.AppendLine();
+            builder.AppendLine("当前版本先只做识别和预览，不会直接批量写库。请到商品管理里逐个确认改价，避免误改整类商品。");
+            AddContextualLocalAnswer(builder.ToString().TrimEnd(), "batch_price_update", subjectText, false, waitingBubble);
+            _lastIntentType = AiIntentResult.RouteAction;
+            _lastActionIntent = "batch_price_update";
+            _lastCategoryName = category;
+            _lastBatchPriceDelta = delta;
+            return true;
+        }
+
+        private void AddContextualLocalAnswer(string answer, string queryKind, string subject, bool updateCandidates)
+        {
+            AddContextualLocalAnswer(answer, queryKind, subject, updateCandidates, null);
+        }
+
+        private void AddContextualLocalAnswer(string answer, string queryKind, string subject, bool updateCandidates, RichTextBox waitingBubble)
+        {
+            _lastAssistantAnswerText = answer;
+            if (waitingBubble == null)
+            {
+                AddPersistentLocalBubble(answer, "system_local", BuildLocalQueryStorageContext(queryKind));
+            }
+            else
+            {
+                SetExistingBubbleAsLocalAnswer(waitingBubble, answer, "system_local", BuildLocalQueryStorageContext(queryKind));
+                SetSendingState(false);
+            }
+
+            _lastIntentType = AiIntentResult.RouteQuery;
+            _lastQueryType = queryKind ?? string.Empty;
+            _lastSubject = subject ?? string.Empty;
+            RememberCategoryContext(_lastQueryType, subject);
+
+            if (updateCandidates)
+            {
+                StoreCandidateContext(subject, queryKind);
+            }
+        }
+
+        private void SetExistingBubbleAsLocalAnswer(RichTextBox bubble, string answer, string messageType, string dataContext)
+        {
+            if (bubble == null)
+            {
+                AddPersistentLocalBubble(answer, messageType, dataContext);
+                return;
+            }
+
+            _lastAssistantAnswerText = answer;
+            SetBubbleContent(bubble, BuildAssistantDisplayText(answer, dataContext, DateTime.Now), false);
+            ResizeBubble(bubble);
+            SaveLocalMessage(answer, messageType, dataContext);
+            RequestScrollChatToBottom();
+        }
+
+        private void UpdateConversationContext(AiIntentResult intent, string routedText)
+        {
+            _lastIntentType = intent == null ? string.Empty : intent.RouteType;
+            _lastQueryType = intent == null ? string.Empty : intent.QueryKind;
+            _lastSubject = routedText ?? string.Empty;
+            RememberCategoryContext(_lastQueryType, routedText);
+
+            if (IsProductQuery(_lastQueryType))
+            {
+                StoreCandidateContext(routedText, _lastQueryType);
+            }
+            else
+            {
+                ClearCandidateContext();
+            }
+        }
+
+        private void StoreCandidateContext(string routedText, string queryKind)
+        {
+            ClearCandidateContext();
+            IList<Product> candidates = _localQueryService.FindProductCandidatesForText(routedText);
+            if (candidates == null || candidates.Count <= 1)
+            {
+                return;
+            }
+
+            _lastCandidateProducts.AddRange(candidates);
+            _lastCandidateQueryKind = queryKind ?? string.Empty;
+        }
+
+        private void ClearCandidateContext()
+        {
+            _lastCandidateProducts.Clear();
+            _lastCandidateQueryKind = string.Empty;
+        }
+
+        private void RememberCategoryContext(string queryKind, string text)
+        {
+            if (string.IsNullOrWhiteSpace(queryKind))
+            {
+                return;
+            }
+
+            if (queryKind != "category_stock"
+                && queryKind != "category_query"
+                && queryKind != "category_low_stock"
+                && queryKind != "restock_advice"
+                && queryKind != "new_product_advice"
+                && queryKind != "batch_price_update"
+                && queryKind != "low_stock")
+            {
+                return;
+            }
+
+            string category = _localQueryService.ResolveCategoryNameFromText(text);
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                _lastCategoryName = category;
+            }
+        }
+
         private bool HasRecentQueryKind(IList<AiStoredMessage> messages, int startIndex, string queryKind)
         {
             for (int index = startIndex; index >= 0 && index >= startIndex - 12; index--)
@@ -1129,6 +1627,314 @@ namespace XiaoPuZhangGui.Forms
             return ContainsAny(text, "找到几个相近商品", "你想查哪一个", "你想查哪个", "有几种", "想查哪种");
         }
 
+        private static bool LooksLikeAllCandidateRequest(string text)
+        {
+            string value = NormalizeContextText(text);
+            return ContainsAny(value, "都告诉我", "都说一下", "全部", "全都", "两个都看", "都查一下", "都看看", "都要", "一起说");
+        }
+
+        private static int ParseCandidateIndex(string text)
+        {
+            string value = NormalizeContextText(text);
+            if (ContainsAny(value, "第一个", "第1个", "第1", "一号", "第一个吧"))
+            {
+                return 0;
+            }
+
+            if (ContainsAny(value, "第二个", "第2个", "第2", "二号", "第二个吧"))
+            {
+                return 1;
+            }
+
+            Match match = Regex.Match(value, @"第?(?<index>\d+)个?");
+            if (match.Success && int.TryParse(match.Groups["index"].Value, out int parsed))
+            {
+                return parsed - 1;
+            }
+
+            return -1;
+        }
+
+        private Product FindCandidateProduct(string text)
+        {
+            string value = NormalizeContextText(text);
+            value = Regex.Replace(value, @"(都告诉我|都说一下|全部|全都|这个|那个|那|呢|吧|啊|嘛|吗)$", string.Empty);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            foreach (Product product in _lastCandidateProducts)
+            {
+                string productName = NormalizeContextText(product.Name);
+                string displayName = NormalizeContextText(FormatProductName(product));
+                if (productName == value || displayName == value || productName.Contains(value) || displayName.Contains(value) || value.Contains(productName))
+                {
+                    return product;
+                }
+            }
+
+            return null;
+        }
+
+        private string ResolveSimpleQueryContinuation(string text)
+        {
+            string value = (text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            string category = _localQueryService.ResolveCategoryNameFromText(value);
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+            if (_lastQueryType == "restock_advice" || ContainsAny(value, "补", "进货", "该进", "建议"))
+                {
+                    return category + " 补货建议";
+                }
+
+                if (ContainsAny(value, "快没", "低库存", "缺货", "该补", "补货"))
+                {
+                    return category + " 哪些快没了";
+                }
+
+                if (_lastQueryType == "category_stock"
+                    || _lastQueryType == "category_low_stock"
+                    || LooksLikeSubjectContinuation(value)
+                    || ContainsAny(value, "有哪些", "有什么", "库存", "商品"))
+                {
+                    return category + " 库存有哪些";
+                }
+            }
+
+            if (LooksLikeCreditContinuation(value) && _lastQueryType == "credit_customers")
+            {
+                return "查询全部未结清赊账";
+            }
+
+            if (!string.IsNullOrWhiteSpace(_lastCategoryName)
+                && (_lastQueryType == "category_stock" || _lastQueryType == "category_low_stock")
+                && ContainsAny(value, "哪些快没", "快没了", "快没货", "低库存", "缺货", "该补", "补货"))
+            {
+                return _lastCategoryName + " 哪些快没了";
+            }
+
+            if (!string.IsNullOrWhiteSpace(_lastCategoryName)
+                && _lastQueryType == "restock_advice"
+                && ContainsAny(value, "那", "只看", "这个分类", "这一类", "呢", "嘛"))
+            {
+                return _lastCategoryName + " 补货建议";
+            }
+
+            if ((_lastQueryType == "product_stock" || _lastQueryType == "product_price") && LooksLikeSubjectContinuation(value))
+            {
+                string subject = ExtractContinuationSubject(value);
+                if (!string.IsNullOrWhiteSpace(subject))
+                {
+                    return subject + (_lastQueryType == "product_price" ? " 多少钱" : " 库存多少");
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private static bool LooksLikeSubjectContinuation(string text)
+        {
+            string value = NormalizeContextText(text);
+            if (string.IsNullOrWhiteSpace(value) || value.Length > 20)
+            {
+                return false;
+            }
+
+            return value.EndsWith("呢", StringComparison.Ordinal)
+                || value.StartsWith("那", StringComparison.Ordinal)
+                || value.EndsWith("吗", StringComparison.Ordinal)
+                || value.EndsWith("嘛", StringComparison.Ordinal);
+        }
+
+        private static string ExtractContinuationSubject(string text)
+        {
+            string value = (text ?? string.Empty).Trim();
+            value = Regex.Replace(value, @"^(那|那么|再查|查一下|看看|这个|那个)", string.Empty);
+            value = Regex.Replace(value, @"(呢|吗|嘛|啊|吧|？|\?)$", string.Empty);
+            return value.Trim();
+        }
+
+        private static bool LooksLikeCorrectionSalesText(string text)
+        {
+            string value = text ?? string.Empty;
+            return ContainsAny(value, "搞错了", "不对", "重新记", "刚才说错了", "说错了", "不是")
+                && ContainsAny(value, "瓶", "包", "袋", "条", "件", "个", "盒", "罐", "支");
+        }
+
+        private static string NormalizeCorrectionToSaleText(string text)
+        {
+            string value = (text ?? string.Empty).Trim();
+            int index = value.LastIndexOf('是');
+            if (index >= 0 && index + 1 < value.Length)
+            {
+                value = value.Substring(index + 1);
+            }
+
+            value = Regex.Replace(value, @"(搞错了|不对|重新记|刚才说错了|说错了|应该是|不是|，|,|。)", " ");
+            value = value.Replace("+", " ");
+            value = Regex.Replace(value, @"\s+", " ").Trim();
+            return string.IsNullOrWhiteSpace(value) ? text : "刚才卖了 " + value;
+        }
+
+        private bool HasRecentCancelledDraftContext(IList<AiStoredMessage> messages, int startIndex)
+        {
+            if (_lastCancelledDrafts.Count > 0)
+            {
+                return true;
+            }
+
+            for (int index = startIndex; index >= 0 && index >= startIndex - 12; index--)
+            {
+                AiStoredMessage message = messages[index];
+                if (message != null && ContainsAny(message.Content, "已取消当前草稿", "已取消全部 AI 动作草稿", "已取消当前"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsProductQuery(string queryKind)
+        {
+            return queryKind == "product_stock" || queryKind == "product_price";
+        }
+
+        private static string NormalizeContextText(string text)
+        {
+            return (text ?? string.Empty)
+                .Replace(" ", string.Empty)
+                .Replace("\t", string.Empty)
+                .Replace("\r", string.Empty)
+                .Replace("\n", string.Empty)
+                .Trim();
+        }
+
+        private static bool ContainsNormalized(string source, string keyword)
+        {
+            string normalizedSource = NormalizeContextText(source);
+            string normalizedKeyword = NormalizeContextText(keyword);
+            return !string.IsNullOrWhiteSpace(normalizedKeyword) && normalizedSource.IndexOf(normalizedKeyword, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string FormatProductName(Product product)
+        {
+            if (product == null)
+            {
+                return string.Empty;
+            }
+
+            return string.IsNullOrWhiteSpace(product.Specification)
+                ? (product.Name ?? string.Empty).Trim()
+                : ((product.Name ?? string.Empty).Trim() + " " + product.Specification.Trim()).Trim();
+        }
+
+        private BatchPriceIntent ResolveBatchPriceFollowUp(string text)
+        {
+            string category = _localQueryService.ResolveCategoryNameFromText(text);
+            if (!string.IsNullOrWhiteSpace(category) && _lastActionIntent == "batch_price_update" && _lastBatchPriceDelta != 0m)
+            {
+                return new BatchPriceIntent
+                {
+                    Category = category,
+                    Delta = _lastBatchPriceDelta
+                };
+            }
+
+            decimal delta;
+            if (!string.IsNullOrWhiteSpace(_lastCategoryName) && TryParseBatchPriceDeltaOnly(text, out delta))
+            {
+                return new BatchPriceIntent
+                {
+                    Category = _lastCategoryName,
+                    Delta = delta
+                };
+            }
+
+            return null;
+        }
+
+        private static bool TryParseBatchPriceDeltaOnly(string text, out decimal delta)
+        {
+            delta = 0m;
+            string value = text ?? string.Empty;
+            if (!ContainsAny(value, "涨价", "降价", "都涨", "都降", "涨", "降"))
+            {
+                return false;
+            }
+
+            Match match = Regex.Match(value, @"(?<direction>涨价|降价|涨|降)\s*(?<amount>\d+(?:\.\d+)?)\s*(?:块|元)?");
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            decimal amount;
+            if (!decimal.TryParse(match.Groups["amount"].Value, out amount))
+            {
+                return false;
+            }
+
+            delta = match.Groups["direction"].Value.Contains("降") ? -amount : amount;
+            return true;
+        }
+
+        private static bool IsSameCategory(string productCategory, string targetCategory)
+        {
+            string productValue = NormalizeContextText(productCategory);
+            string targetValue = NormalizeContextText(targetCategory);
+            return !string.IsNullOrWhiteSpace(productValue)
+                && !string.IsNullOrWhiteSpace(targetValue)
+                && (productValue == targetValue || productValue.Contains(targetValue) || targetValue.Contains(productValue));
+        }
+
+        private static BatchPriceIntent ParseBatchPriceIntent(string text)
+        {
+            string value = text ?? string.Empty;
+            if (!ContainsAny(value, "涨价", "降价", "都涨", "都降") || !ContainsAny(value, "所有", "全部", "整类", "这一类"))
+            {
+                return null;
+            }
+
+            Match match = Regex.Match(value, @"(?:把|将)?(?:所有|全部)?(?<category>[\u4e00-\u9fa5A-Za-z0-9]{1,12})(?:都|全部|一起)?(?<direction>涨价|降价|涨|降)\s*(?<amount>\d+(?:\.\d+)?)\s*(?:块|元)?");
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            string category = match.Groups["category"].Value.Trim();
+            if (string.IsNullOrWhiteSpace(category))
+            {
+                return null;
+            }
+
+            decimal amount;
+            if (!decimal.TryParse(match.Groups["amount"].Value, out amount))
+            {
+                return null;
+            }
+
+            string direction = match.Groups["direction"].Value;
+            return new BatchPriceIntent
+            {
+                Category = category,
+                Delta = direction.Contains("降") ? -amount : amount
+            };
+        }
+
+        private sealed class BatchPriceIntent
+        {
+            public string Category { get; set; }
+
+            public decimal Delta { get; set; }
+        }
+
         private async Task SendKnownAnalysisAsync(string prompt, string analysisKey)
         {
             RemoveEmptyStateImage();
@@ -1139,9 +1945,14 @@ namespace XiaoPuZhangGui.Forms
 
         private async Task SendAnalysisAsync(string userText, string analysisKey)
         {
+            await SendAnalysisAsync(userText, analysisKey, null);
+        }
+
+        private async Task SendAnalysisAsync(string userText, string analysisKey, RichTextBox waitingBubble)
+        {
             BusinessSummaryResult liveContext = BuildAnalysisContext(analysisKey, userText);
             string prompt = BuildAiUserPrompt(liveContext, userText);
-            await SendToAiAsync(prompt, liveContext);
+            await SendToAiAsync(prompt, liveContext, waitingBubble);
         }
 
         private BusinessSummaryResult BuildAnalysisContext(string analysisKey, string userText)
@@ -1149,6 +1960,11 @@ namespace XiaoPuZhangGui.Forms
             if (analysisKey == "today")
             {
                 return _businessSummaryService.BuildTodaySummary();
+            }
+
+            if (analysisKey == "yesterday")
+            {
+                return _businessSummaryService.BuildYesterdaySummary();
             }
 
             if (analysisKey == "week")
@@ -1181,11 +1997,39 @@ namespace XiaoPuZhangGui.Forms
 
         private static string BuildLocalQueryStorageContext(AiIntentResult intent)
         {
+            return BuildLocalQueryStorageContext(intent == null ? string.Empty : intent.QueryKind);
+        }
+
+        private static string BuildLocalQueryStorageContext(string queryKind)
+        {
             string readText = "库存摘要";
-            string queryKind = intent == null ? string.Empty : intent.QueryKind;
             if (queryKind == "credit_customers")
             {
                 readText = "赊账记录";
+            }
+            else if (queryKind == "scrap_loss")
+            {
+                readText = "报废记录";
+            }
+            else if (queryKind == "scrap_records")
+            {
+                readText = "报废记录";
+            }
+            else if (queryKind == "batch_price_update")
+            {
+                readText = "商品清单";
+            }
+            else if (queryKind == "category_stock" || queryKind == "category_query" || queryKind == "category_low_stock")
+            {
+                readText = "商品清单、库存摘要";
+            }
+            else if (queryKind == "restock_advice")
+            {
+                readText = "商品清单、库存摘要、低库存商品、近期销售排行";
+            }
+            else if (queryKind == "new_product_advice")
+            {
+                readText = "商品清单、库存摘要、分类结构、店铺记忆";
             }
             else if (queryKind == "all_inventory" || queryKind == "product_price" || queryKind == "product_stock" || queryKind == "low_stock" || queryKind == "expiring_products")
             {
@@ -1198,6 +2042,11 @@ namespace XiaoPuZhangGui.Forms
         }
 
         private async Task<bool> TryHandleActionDraftAsync(string userText, AiIntentResult intent)
+        {
+            return await TryHandleActionDraftAsync(userText, intent, null);
+        }
+
+        private async Task<bool> TryHandleActionDraftAsync(string userText, AiIntentResult intent, RichTextBox statusBubble)
         {
             if (string.IsNullOrWhiteSpace(userText))
             {
@@ -1219,7 +2068,15 @@ namespace XiaoPuZhangGui.Forms
             AiSettings settings = _settingsService.Load();
             settings.AiApiKey = _settingsService.GetApiKey();
             SetSendingState(true);
-            RichTextBox statusBubble = AddChatBubble("正在识别经营动作...\r\n我会先生成草稿，不会直接修改数据库。", false, false);
+            if (statusBubble == null)
+            {
+                statusBubble = AddChatBubble("正在生成确认单……\r\n我会先生成草稿，不会直接修改数据库。", false, false);
+            }
+            else
+            {
+                SetBubbleContent(statusBubble, "正在生成确认单……\r\n我会先生成草稿，不会直接修改数据库。", false);
+                ResizeBubble(statusBubble);
+            }
 
             try
             {
@@ -2267,6 +3124,7 @@ namespace XiaoPuZhangGui.Forms
                 return;
             }
 
+            RememberCancelledDraft(item);
             item.Status = AiActionDraftStatus.Cancelled;
             _actionDraftService.ValidateDraft(_pendingActionDraft);
             AddPersistentLocalBubble("已取消当前草稿：" + _actionDraftService.BuildItemDisplayTitle(item), "action_result", _actionDraftService.SerializeDraft(_pendingActionDraft));
@@ -2290,6 +3148,7 @@ namespace XiaoPuZhangGui.Forms
                 {
                     if (item.Status != AiActionDraftStatus.Executed)
                     {
+                        RememberCancelledDraft(item);
                         item.Status = AiActionDraftStatus.Cancelled;
                     }
                 }
@@ -2302,6 +3161,25 @@ namespace XiaoPuZhangGui.Forms
             _pendingActionDraft = null;
             _pendingActionDraftMessageId = 0;
             AddPersistentLocalBubble(message, "action_result", string.Empty);
+        }
+
+        private void RememberCancelledDraft(AiActionDraftItem item)
+        {
+            if (item == null)
+            {
+                return;
+            }
+
+            string title = _actionDraftService.BuildItemDisplayTitle(item);
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                _lastCancelledDrafts.Insert(0, title);
+            }
+
+            while (_lastCancelledDrafts.Count > 6)
+            {
+                _lastCancelledDrafts.RemoveAt(_lastCancelledDrafts.Count - 1);
+            }
         }
 
         private bool ApplyActionFormToItem(AiActionDraftItem item)
@@ -2849,18 +3727,41 @@ namespace XiaoPuZhangGui.Forms
 
         private async Task SendToAiAsync(string userPrompt, BusinessSummaryResult liveContext)
         {
+            await SendToAiAsync(userPrompt, liveContext, null);
+        }
+
+        private async Task SendToAiAsync(string userPrompt, BusinessSummaryResult liveContext, RichTextBox waitingBubble)
+        {
             AiSettings settings = _settingsService.Load();
             settings.AiApiKey = _settingsService.GetApiKey();
             if (string.IsNullOrWhiteSpace(settings.AiApiKey))
             {
-                AddChatBubble("请先配置 DeepSeek API Key。", false, false);
+                if (waitingBubble == null)
+                {
+                    AddChatBubble("请先配置 DeepSeek API Key。", false, false);
+                }
+                else
+                {
+                    SetBubbleContent(waitingBubble, "请先配置 DeepSeek API Key。", false);
+                    ResizeBubble(waitingBubble);
+                }
+
+                SetSendingState(false);
                 return;
             }
 
             AiDataTrace dataTrace = BuildDataTrace(liveContext);
             string contextInfo = dataTrace.ReadText;
             SetSendingState(true);
-            RichTextBox waitingBubble = AddChatBubble(BuildWaitingStatusText(dataTrace), false, false);
+            if (waitingBubble == null)
+            {
+                waitingBubble = AddChatBubble(BuildWaitingStatusText(dataTrace), false, false);
+            }
+            else
+            {
+                SetBubbleContent(waitingBubble, "正在整理回答……", false);
+                ResizeBubble(waitingBubble);
+            }
 
             try
             {
@@ -3308,15 +4209,42 @@ namespace XiaoPuZhangGui.Forms
             return messages;
         }
 
+        private static List<AiChatMessage> BuildSemanticGroundedMessages(string userText, string routedText, string localAnswer)
+        {
+            List<AiChatMessage> messages = new List<AiChatMessage>();
+            messages.Add(AiChatMessage.System(
+                "你是小铺掌柜的回答整理助手。本地程序已经完成数据库查询，你只能基于本地查询结果回答。"
+                + "不要编造没有出现在本地查询结果里的销售、库存、利润、赊账或报废数据。"
+                + "如果本地结果显示数据不足，就明确告诉老板缺哪些数据，并给出下一步怎么记录。"
+                + "请用中文纯文本回答，不要 Markdown，不要表格，不要代码块。"));
+            StringBuilder builder = new StringBuilder();
+            builder.AppendLine("用户原话：");
+            builder.AppendLine(userText ?? string.Empty);
+            builder.AppendLine();
+            builder.AppendLine("本地程序识别后的查询主题：");
+            builder.AppendLine(routedText ?? string.Empty);
+            builder.AppendLine();
+            builder.AppendLine("本地数据库查询结果：");
+            builder.AppendLine(localAnswer ?? string.Empty);
+            builder.AppendLine();
+            builder.AppendLine("请把上面的本地查询结果整理成老板容易理解的话。");
+            messages.Add(AiChatMessage.User(builder.ToString()));
+            return messages;
+        }
+
         private static string BuildAiUserPrompt(BusinessSummaryResult liveContext, string requestText)
         {
             string plainTextRule = "\r\n【输出格式要求】\r\n请只用纯文本回答，不要使用 Markdown 语法。不要输出 #、##、###、**加粗**、```代码块```、表格、引用块。可以使用普通编号 1. 2. 3.，每条建议分行写。";
+            DateTime now = DateTime.Now;
+            string dateRule = "\r\n【统一日期要求】\r\n本次统计时间：" + now.ToString("yyyy-MM-dd HH:mm")
+                + "\r\n如果回答提到“今天”，必须以 " + now.ToString("yyyy-MM-dd")
+                + " 为准，不要把历史销售记录、历史赊账日期或示例日期当成今天。";
             if (liveContext != null && liveContext.Success && !string.IsNullOrWhiteSpace(liveContext.SummaryText))
             {
-                return liveContext.SummaryText + "\r\n【用户当前问题】\r\n" + requestText + "\r\n请在回答里说明“根据当前本地记录”。" + plainTextRule;
+                return liveContext.SummaryText + dateRule + "\r\n【用户当前问题】\r\n" + requestText + "\r\n请在回答里说明“根据当前本地记录”。" + plainTextRule;
             }
 
-            return "用户当前问题：\r\n" + requestText + "\r\n如果没有提供本地经营摘要，请不要假装知道销售、库存或赊账数据。" + plainTextRule;
+            return "用户当前问题：\r\n" + requestText + dateRule + "\r\n如果没有提供本地经营摘要，请不要假装知道销售、库存或赊账数据。" + plainTextRule;
         }
 
         private void AddSuggestionButton(FlowLayoutPanel panel, string text, string prompt)

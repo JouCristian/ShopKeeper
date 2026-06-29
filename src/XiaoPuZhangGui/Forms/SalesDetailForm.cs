@@ -92,6 +92,7 @@ namespace XiaoPuZhangGui.Forms
             _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
             _grid.CellValueChanged += delegate { RecalculateGridRows(); };
             _grid.CellEndEdit += delegate { RecalculateGridRows(); };
+            _grid.CellContentClick += Grid_CellContentClick;
             _grid.SizeChanged += delegate { ApplyDetailGridColumns(); };
             _grid.DataBindingComplete += delegate { ApplyDetailGridColumns(); };
             _grid.DataError += delegate(object sender, DataGridViewDataErrorEventArgs e)
@@ -164,6 +165,17 @@ namespace XiaoPuZhangGui.Forms
             AddNumberColumn("金额", "LineAmount", 88, "N2", true);
             AddNumberColumn("成本", "LineCost", 88, "N2", true);
             AddNumberColumn("毛利", "LineProfit", 88, "N2", true);
+            DataGridViewButtonColumn actionColumn = new DataGridViewButtonColumn
+            {
+                Name = "ActionColumn",
+                HeaderText = "操作",
+                Text = "删除",
+                Width = 76,
+                MinimumWidth = 76,
+                UseColumnTextForButtonValue = true,
+                Visible = false
+            };
+            _grid.Columns.Add(actionColumn);
         }
 
         private void ApplyDetailGridColumns()
@@ -173,13 +185,14 @@ namespace XiaoPuZhangGui.Forms
                 return;
             }
 
-            ApplyDetailFillColumn("ProductColumn", 170, 150);
-            ApplyDetailFillColumn("Quantity", 70, 62);
-            ApplyDetailFillColumn("SalePriceSnapshot", 76, 70);
-            ApplyDetailFillColumn("CostPriceSnapshot", 76, 70);
-            ApplyDetailFillColumn("LineAmount", 76, 70);
-            ApplyDetailFillColumn("LineCost", 76, 70);
-            ApplyDetailFillColumn("LineProfit", 76, 70);
+            ApplyDetailFillColumn("ProductColumn", 170, _editMode ? 130 : 135);
+            ApplyDetailFillColumn("Quantity", 70, 58);
+            ApplyDetailFillColumn("SalePriceSnapshot", 76, 64);
+            ApplyDetailFillColumn("CostPriceSnapshot", 76, 64);
+            ApplyDetailFillColumn("LineAmount", 76, 64);
+            ApplyDetailFillColumn("LineCost", 76, 64);
+            ApplyDetailFillColumn("LineProfit", 76, 64);
+            ApplyFixedDetailColumn("ActionColumn", 76, _editMode);
             _grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         }
 
@@ -194,6 +207,22 @@ namespace XiaoPuZhangGui.Forms
             column.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
             column.MinimumWidth = minimumWidth;
             column.FillWeight = fillWeight;
+            column.Resizable = DataGridViewTriState.False;
+        }
+
+        private void ApplyFixedDetailColumn(string columnName, int width, bool visible)
+        {
+            if (!_grid.Columns.Contains(columnName))
+            {
+                return;
+            }
+
+            DataGridViewColumn column = _grid.Columns[columnName];
+            column.Visible = visible;
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            column.MinimumWidth = width;
+            column.Width = width;
+            column.ReadOnly = true;
             column.Resizable = DataGridViewTriState.False;
         }
 
@@ -232,6 +261,13 @@ namespace XiaoPuZhangGui.Forms
             _grid.Columns["LineAmount"].ReadOnly = true;
             _grid.Columns["LineCost"].ReadOnly = true;
             _grid.Columns["LineProfit"].ReadOnly = true;
+            if (_grid.Columns.Contains("ActionColumn"))
+            {
+                _grid.Columns["ActionColumn"].Visible = editMode;
+                _grid.Columns["ActionColumn"].ReadOnly = true;
+            }
+
+            ApplyDetailGridColumns();
 
             if (editMode && _grid.Rows.Count > 0)
             {
@@ -246,6 +282,33 @@ namespace XiaoPuZhangGui.Forms
         {
             _grid.EndEdit();
             RecalculateGridRows();
+
+            if (_items.Count == 0)
+            {
+                DialogResult deleteResult = MessageBox.Show(
+                    "当前销售单已没有任何明细，保存后将直接删除这张销售单，并同步恢复库存。是否继续？",
+                    "删除销售单",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning,
+                    MessageBoxDefaultButton.Button2);
+
+                if (deleteResult != DialogResult.Yes)
+                {
+                    return;
+                }
+
+                string deleteMessage;
+                if (!_salesService.TryDelete(_order.Id, out deleteMessage))
+                {
+                    MessageBox.Show(deleteMessage, "校验提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                MessageBox.Show(deleteMessage, "保存成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                DialogResult = DialogResult.OK;
+                Close();
+                return;
+            }
 
             for (int i = 0; i < _items.Count; i++)
             {
@@ -304,6 +367,24 @@ namespace XiaoPuZhangGui.Forms
 
             _items.ResetBindings();
             RefreshInfo();
+        }
+
+        private void Grid_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (!_editMode || e.RowIndex < 0 || e.ColumnIndex < 0)
+            {
+                return;
+            }
+
+            if (!_grid.Columns.Contains("ActionColumn") || _grid.Columns[e.ColumnIndex].Name != "ActionColumn")
+            {
+                return;
+            }
+
+            _grid.EndEdit();
+            _items.RemoveAt(e.RowIndex);
+            RecalculateGridRows();
+            ApplyDetailGridColumns();
         }
 
         private static void RecalculateItem(SalesItem item)

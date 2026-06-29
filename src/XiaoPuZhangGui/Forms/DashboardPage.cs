@@ -10,7 +10,7 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class DashboardPage : UserControl
+    internal sealed class DashboardPage : UserControl, IResponsivePage
     {
         private readonly ReportService _reportService;
         private readonly Action<string> _navigateAction;
@@ -41,6 +41,10 @@ namespace XiaoPuZhangGui.Forms
         private Label _netProfitLabel;
         private Label _salesOrderCountLabel;
         private Label _soldQuantityLabel;
+        private Panel _headerPanel;
+        private Panel _contentPanel;
+        private TableLayoutPanel _headerLayout;
+        private PictureBox _heroBox;
 
         public DashboardPage(Action<string> navigateAction)
             : this(new ReportService(), navigateAction)
@@ -61,8 +65,10 @@ namespace XiaoPuZhangGui.Forms
             BackColor = UiTheme.PageBackground;
             Font = UiTheme.Font(11F);
 
-            Controls.Add(BuildContentPanel());
-            Controls.Add(BuildHeaderPanel());
+            _contentPanel = BuildContentPanel();
+            _headerPanel = BuildHeaderPanel();
+            Controls.Add(_contentPanel);
+            Controls.Add(_headerPanel);
 
             Load += delegate { LoadDashboard(); };
         }
@@ -80,12 +86,12 @@ namespace XiaoPuZhangGui.Forms
             TableLayoutPanel headerLayout = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                ColumnCount = 3,
+                ColumnCount = 2,
                 RowCount = 1,
                 BackColor = UiTheme.CardBackground
             };
+            _headerLayout = headerLayout;
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124F));
             headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430F));
             headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
@@ -93,27 +99,6 @@ namespace XiaoPuZhangGui.Forms
             {
                 Dock = DockStyle.Fill,
                 BackColor = UiTheme.CardBackground
-            };
-
-            Panel actionPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                BackColor = UiTheme.CardBackground,
-                Margin = new Padding(0, 0, 18, 0)
-            };
-
-            Button refreshButton = UiComponentHelper.CreatePrimaryButton("刷新", 96);
-            refreshButton.Size = new Size(96, 44);
-            refreshButton.Margin = Padding.Empty;
-            refreshButton.Tag = "KeepSize";
-            UiComponentHelper.CenterButtonIcon(refreshButton);
-            refreshButton.Click += delegate { LoadDashboard(); };
-            actionPanel.Controls.Add(refreshButton);
-            actionPanel.Resize += delegate
-            {
-                refreshButton.Location = new Point(
-                    Math.Max(0, actionPanel.ClientSize.Width - refreshButton.Width - 6),
-                    Math.Max(0, (actionPanel.ClientSize.Height - refreshButton.Height) / 2));
             };
 
             _titleLabel = new Label
@@ -145,6 +130,7 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = UiTheme.CardBackground,
                 Margin = new Padding(12, 0, 0, 0)
             };
+            _heroBox = heroBox;
 
             textPanel.Controls.Add(_titleLabel);
             textPanel.Controls.Add(_subtitleLabel);
@@ -162,10 +148,49 @@ namespace XiaoPuZhangGui.Forms
             textPanel.Resize += arrangeText;
             arrangeText(textPanel, EventArgs.Empty);
             headerLayout.Controls.Add(textPanel, 0, 0);
-            headerLayout.Controls.Add(actionPanel, 1, 0);
-            headerLayout.Controls.Add(heroBox, 2, 0);
+            headerLayout.Controls.Add(heroBox, 1, 0);
             panel.Controls.Add(headerLayout);
             return panel;
+        }
+
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            bool veryCompact = ResponsiveLayoutManager.IsVeryCompact(mode);
+            if (_headerPanel != null)
+            {
+                _headerPanel.Height = veryCompact ? 124 : (compact ? 136 : 176);
+                _headerPanel.Padding = veryCompact
+                    ? new Padding(16, 8, 16, 8)
+                    : (compact ? new Padding(18, 10, 18, 10) : new Padding(28, 14, 28, 14));
+            }
+
+            if (_contentPanel != null)
+            {
+                _contentPanel.Padding = veryCompact ? new Padding(8) : (compact ? new Padding(10) : new Padding(16));
+            }
+
+            if (_headerLayout != null && _headerLayout.ColumnStyles.Count >= 2)
+            {
+                _headerLayout.ColumnStyles[1].Width = veryCompact ? 210F : (compact ? 280F : 430F);
+            }
+
+            if (_titleLabel != null)
+            {
+                _titleLabel.Height = veryCompact ? 42 : (compact ? 46 : 56);
+                _titleLabel.Font = UiTheme.Font(veryCompact ? 22F : (compact ? 24F : 31F), FontStyle.Bold);
+            }
+
+            if (_subtitleLabel != null)
+            {
+                _subtitleLabel.Height = compact ? 26 : 30;
+                _subtitleLabel.Font = UiTheme.Font(compact ? 10.5F : 11.5F);
+            }
+
+            if (_heroBox != null)
+            {
+                _heroBox.Margin = compact ? new Padding(8, 0, 0, 0) : new Padding(12, 0, 0, 0);
+            }
         }
 
         private Panel BuildContentPanel()
@@ -771,7 +796,7 @@ namespace XiaoPuZhangGui.Forms
         {
             DataGridViewTextBoxColumn column = CreateTextColumn(propertyName, headerText, width);
             column.DefaultCellStyle.Format = "0.##";
-            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             return column;
         }
 
@@ -779,7 +804,7 @@ namespace XiaoPuZhangGui.Forms
         {
             DataGridViewTextBoxColumn column = CreateTextColumn(propertyName, headerText, width);
             column.DefaultCellStyle.Format = "0.00";
-            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
             return column;
         }
 

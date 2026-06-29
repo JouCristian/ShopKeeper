@@ -19,7 +19,7 @@ namespace XiaoPuZhangGui.Forms
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(820, 520);
+            ClientSize = new Size(960, 560);
             Font = new Font("Microsoft YaHei UI", 11F);
             BackColor = Color.White;
 
@@ -59,7 +59,7 @@ namespace XiaoPuZhangGui.Forms
                     record.TotalAmount,
                     record.Remark),
                 Location = new Point(28, 66),
-                Size = new Size(760, 66),
+                Size = new Size(900, 66),
                 ForeColor = Color.FromArgb(73, 80, 87)
             };
             Controls.Add(infoLabel);
@@ -67,7 +67,7 @@ namespace XiaoPuZhangGui.Forms
             DataGridView grid = new DataGridView
             {
                 Location = new Point(28, 145),
-                Size = new Size(760, 315),
+                Size = new Size(900, 345),
                 AutoGenerateColumns = false,
                 AllowUserToAddRows = false,
                 AllowUserToDeleteRows = false,
@@ -79,18 +79,22 @@ namespace XiaoPuZhangGui.Forms
                 DataSource = record.Items
             };
             GridStyleHelper.ApplyStandardStyle(grid);
-            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "商品", DataPropertyName = "ProductNameSnapshot", Width = 170 });
-            AddNumberColumn(grid, "数量", "Quantity", 90, "N3");
-            AddNumberColumn(grid, "进货单价", "PurchasePrice", 100, "N2");
-            AddNumberColumn(grid, "小计", "LineTotal", 100, "N2");
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "商品", DataPropertyName = "ProductNameSnapshot", Width = 200 });
+            AddNumberColumn(grid, "数量", "Quantity", 80, "N2");
+            AddNumberColumn(grid, "进货单价", "PurchasePrice", 90, "N2");
+            AddNumberColumn(grid, "小计", "LineTotal", 90, "N2");
+            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "生产日期", DataPropertyName = "ProductionDate", Width = 110, DefaultCellStyle = { Format = "yyyy-MM-dd" } });
             grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "到期日期", DataPropertyName = "ExpiryDateText", Width = 110 });
             grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "备注", DataPropertyName = "Remark", Width = 180 });
+            ApplyColumnWidths(grid);
+
             Controls.Add(grid);
 
             Button closeButton = new Button
             {
                 Text = "关闭",
-                Location = new Point(668, 470),
+                Location = new Point(808, 510),
                 Size = new Size(120, 38),
                 DialogResult = DialogResult.OK
             };
@@ -109,6 +113,34 @@ namespace XiaoPuZhangGui.Forms
             column.DefaultCellStyle.Format = format;
             column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             grid.Columns.Add(column);
+        }
+
+        private static void ApplyColumnWidths(DataGridView grid)
+        {
+            if (grid.Columns.Count < 7)
+            {
+                return;
+            }
+
+            SetFixedColumn(grid.Columns[0], 200);
+            SetFixedColumn(grid.Columns[1], 80);
+            SetFixedColumn(grid.Columns[2], 90);
+            SetFixedColumn(grid.Columns[3], 90);
+            SetFixedColumn(grid.Columns[4], 110);
+            SetFixedColumn(grid.Columns[5], 110);
+
+            DataGridViewColumn remarkColumn = grid.Columns[6];
+            remarkColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            remarkColumn.MinimumWidth = 160;
+            remarkColumn.FillWeight = 180;
+        }
+
+        private static void SetFixedColumn(DataGridViewColumn column, int width)
+        {
+            column.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            column.Width = width;
+            column.MinimumWidth = width;
+            column.FillWeight = width;
         }
     }
 }

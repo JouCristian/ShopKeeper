@@ -51,6 +51,7 @@
     <Compile Include="Database\DatabaseService.cs" />
     <Compile Include="Forms\CategoryManagementForm.cs" />
     <Compile Include="Forms\AiAssistantPage.cs" />
+    <Compile Include="Forms\AiQuickQuestionsForm.cs" />
     <Compile Include="Forms\CreditDetailForm.cs" />
     <Compile Include="Forms\CreditManagementPage.cs" />
     <Compile Include="Forms\CreditPaymentForm.cs" />
@@ -78,7 +79,15 @@
     <Compile Include="Models\AppConfig.cs" />
     <Compile Include="Models\AiChatMessage.cs" />
     <Compile Include="Models\AiConversation.cs" />
+    <Compile Include="Models\AiActionConstants.cs" />
+    <Compile Include="Models\AiActionDraft.cs" />
+    <Compile Include="Models\AiActionDraftItem.cs" />
+    <Compile Include="Models\AiActionDraftParseResult.cs" />
+    <Compile Include="Models\AiActionExecutionResult.cs" />
     <Compile Include="Models\AiIntentResult.cs" />
+    <Compile Include="Models\AiPurchaseDraft.cs" />
+    <Compile Include="Models\AiPurchaseDraftReview.cs" />
+    <Compile Include="Models\AiPurchaseExecutionResult.cs" />
     <Compile Include="Models\AiResponseResult.cs" />
     <Compile Include="Models\AiSettings.cs" />
     <Compile Include="Models\AiStoreProfile.cs" />
@@ -117,8 +126,13 @@
     <Compile Include="Repositories\ScrapRepository.cs" />
     <Compile Include="Repositories\StockBatchRepository.cs" />
     <Compile Include="Services\AppConfigService.cs" />
+    <Compile Include="Services\AiActionDraftService.cs" />
     <Compile Include="Services\AiConversationService.cs" />
     <Compile Include="Services\AiIntentRouter.cs" />
+    <Compile Include="Services\AiLocalQueryService.cs" />
+    <Compile Include="Services\AiOperationLogService.cs" />
+    <Compile Include="Services\AiPurchaseDraftService.cs" />
+    <Compile Include="Services\AiQuickQuestionService.cs" />
     <Compile Include="Services\AiSettingsService.cs" />
     <Compile Include="Services\AiStoreProfileService.cs" />
     <Compile Include="Services\AuthService.cs" />
@@ -141,6 +155,7 @@
     <Compile Include="Utils\GridStyleHelper.cs" />
     <Compile Include="Utils\HashHelper.cs" />
     <Compile Include="Utils\RecoveryKeyGenerator.cs" />
+    <Compile Include="Utils\ResponsiveLayoutManager.cs" />
     <Compile Include="Utils\UiAssetHelper.cs" />
     <Compile Include="Utils\UiComponentHelper.cs" />
     <Compile Include="Utils\UiStatusStyleHelper.cs" />

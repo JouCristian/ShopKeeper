@@ -40,6 +40,26 @@ namespace XiaoPuZhangGui.Services
             return _productRepository.GetById(productId);
         }
 
+        public Product FindActiveProductByName(string productName)
+        {
+            if (string.IsNullOrWhiteSpace(productName))
+            {
+                return null;
+            }
+
+            string normalizedName = productName.Trim();
+            IList<Product> products = SearchActiveProducts(normalizedName);
+            foreach (Product product in products)
+            {
+                if (product != null && string.Equals(product.Name, normalizedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return product;
+                }
+            }
+
+            return null;
+        }
+
         public IList<SalesOrder> GetTodayOrders()
         {
             DateTime start = DateTime.Today;
@@ -64,6 +84,28 @@ namespace XiaoPuZhangGui.Services
             order.Id = _salesRepository.Save(order);
             message = "销售单已保存。";
             return true;
+        }
+
+        public bool TryUpdate(SalesOrder order, out string message)
+        {
+            Normalize(order);
+
+            if (!Validate(order, out message))
+            {
+                return false;
+            }
+
+            try
+            {
+                _salesRepository.Update(order);
+                message = "销售单已保存修改。";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return false;
+            }
         }
 
         public bool TryDelete(long id, out string message)
@@ -183,6 +225,18 @@ namespace XiaoPuZhangGui.Services
                 if (item.Quantity <= 0)
                 {
                     message = "第 " + rowNumber + " 行销售数量必须大于 0。";
+                    return false;
+                }
+
+                if (item.Quantity != Math.Truncate(item.Quantity))
+                {
+                    message = "第 " + rowNumber + " 行销售数量必须是整数。";
+                    return false;
+                }
+
+                if (order.Id <= 0 && product.CurrentStock < item.Quantity)
+                {
+                    message = "第 " + rowNumber + " 行销售数量不能超过当前库存。";
                     return false;
                 }
 

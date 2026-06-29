@@ -68,7 +68,7 @@ namespace XiaoPuZhangGui.Services
             try
             {
                 _productRepository.Delete(id);
-                message = "商品已删除。";
+                message = "商品已删除，历史记录仍会保留。";
                 return true;
             }
             catch (Exception ex)
@@ -134,7 +134,7 @@ namespace XiaoPuZhangGui.Services
                 return false;
             }
 
-            if (product.Status != "在售" && product.Status != "停用")
+            if (product.Status != "在售" && product.Status != "停用" && product.Status != "已删除")
             {
                 message = "商品状态不正确。";
                 return false;

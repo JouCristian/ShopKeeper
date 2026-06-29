@@ -9,7 +9,7 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class ReportPage : UserControl
+    internal sealed class ReportPage : UserControl, IResponsivePage
     {
         private readonly ReportService _reportService;
         private readonly ExcelExportService _exportService;
@@ -28,6 +28,13 @@ namespace XiaoPuZhangGui.Forms
         private ProfitTrendChart _profitTrendChart;
         private Button _trendUnitButton;
         private TrendUnitOption _trendUnitOption;
+        private Label _titleLabel;
+        private Panel _contentPanel;
+        private Panel _filterPanel;
+        private FlowLayoutPanel _filterControls;
+        private FlowLayoutPanel _exportButtons;
+        private PictureBox _reportPicture;
+        private TableLayoutPanel _overviewLayout;
 
         private Label _salesReceivableValueLabel;
         private Label _salesPaidValueLabel;
@@ -67,7 +74,7 @@ namespace XiaoPuZhangGui.Forms
             BackColor = UiTheme.PageBackground;
             Font = UiTheme.Font(11F);
 
-            Label titleLabel = new Label
+            _titleLabel = new Label
             {
                 AutoSize = false,
                 Dock = DockStyle.Top,
@@ -79,7 +86,7 @@ namespace XiaoPuZhangGui.Forms
                 Padding = new Padding(28, 0, 0, 0)
             };
 
-            Panel contentPanel = new Panel
+            _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(16),
@@ -89,10 +96,10 @@ namespace XiaoPuZhangGui.Forms
             Panel filterPanel = BuildFilterPanel();
             TabControl tabs = BuildTabs();
 
-            contentPanel.Controls.Add(tabs);
-            contentPanel.Controls.Add(filterPanel);
-            Controls.Add(contentPanel);
-            Controls.Add(titleLabel);
+            _contentPanel.Controls.Add(tabs);
+            _contentPanel.Controls.Add(filterPanel);
+            Controls.Add(_contentPanel);
+            Controls.Add(_titleLabel);
 
             _modeComboBox.SelectedIndex = 0;
             LoadSelectedReport();
@@ -107,6 +114,7 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = UiTheme.CardBackground,
                 Padding = new Padding(14, 12, 14, 12)
             };
+            _filterPanel = panel;
 
             FlowLayoutPanel filters = new FlowLayoutPanel
             {
@@ -116,6 +124,7 @@ namespace XiaoPuZhangGui.Forms
                 WrapContents = true,
                 BackColor = UiTheme.CardBackground
             };
+            _filterControls = filters;
 
             FlowLayoutPanel exportButtons = new FlowLayoutPanel
             {
@@ -125,6 +134,7 @@ namespace XiaoPuZhangGui.Forms
                 WrapContents = true,
                 BackColor = UiTheme.CardBackground
             };
+            _exportButtons = exportButtons;
 
             _modeComboBox = new ComboBox
             {
@@ -202,10 +212,54 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = UiTheme.CardBackground,
                 Margin = new Padding(12, 0, 0, 0)
             };
+            _reportPicture = reportPicture;
 
             panel.Controls.Add(controlsPanel);
             panel.Controls.Add(reportPicture);
             return panel;
+        }
+
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            bool veryCompact = ResponsiveLayoutManager.IsVeryCompact(mode);
+            if (_titleLabel != null)
+            {
+                _titleLabel.Height = veryCompact ? 58 : (compact ? 64 : 86);
+                _titleLabel.Font = UiTheme.Font(veryCompact ? 23F : (compact ? 25F : 28F), FontStyle.Bold);
+                _titleLabel.Padding = compact ? new Padding(18, 0, 0, 0) : new Padding(28, 0, 0, 0);
+            }
+
+            if (_contentPanel != null)
+            {
+                _contentPanel.Padding = veryCompact ? new Padding(8) : (compact ? new Padding(10) : new Padding(16));
+            }
+
+            if (_filterPanel != null)
+            {
+                _filterPanel.Height = veryCompact ? 128 : (compact ? 136 : 150);
+                _filterPanel.Padding = compact ? new Padding(10, 8, 10, 8) : new Padding(14, 12, 14, 12);
+            }
+
+            if (_filterControls != null)
+            {
+                _filterControls.Height = compact ? 54 : 62;
+            }
+
+            if (_exportButtons != null)
+            {
+                _exportButtons.Height = compact ? 54 : 62;
+            }
+
+            if (_reportPicture != null)
+            {
+                _reportPicture.Width = veryCompact ? 210 : (compact ? 240 : 320);
+            }
+
+            if (_overviewLayout != null && _overviewLayout.RowStyles.Count >= 2)
+            {
+                _overviewLayout.RowStyles[0].Height = veryCompact ? 276 : (compact ? 288 : 318);
+            }
         }
 
         private TabControl BuildTabs()
@@ -234,6 +288,7 @@ namespace XiaoPuZhangGui.Forms
                 BackColor = UiTheme.PageBackground,
                 Padding = new Padding(8)
             };
+            _overviewLayout = layout;
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 318));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 

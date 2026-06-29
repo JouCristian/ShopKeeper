@@ -260,6 +260,11 @@ namespace XiaoPuZhangGui.Utils
 
             if (control is TextBox)
             {
+                if (object.Equals(control.Tag, "PlainTextBox"))
+                {
+                    return;
+                }
+
                 TextBox textBox = (TextBox)control;
                 if (!textBox.Multiline)
                 {
@@ -371,10 +376,11 @@ namespace XiaoPuZhangGui.Utils
 
         public static Panel CreatePageHeader(string title, string subtitle, Control action, string illustrationName)
         {
+            bool largeIllustration = IsLargeHeaderIllustration(illustrationName);
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = string.IsNullOrEmpty(illustrationName) ? 112 : 176,
+                Height = string.IsNullOrEmpty(illustrationName) ? 112 : (largeIllustration ? 216 : 176),
                 BackColor = UiTheme.CardBackground,
                 Padding = string.IsNullOrEmpty(illustrationName)
                     ? new Padding(28, 13, 28, 13)
@@ -393,7 +399,7 @@ namespace XiaoPuZhangGui.Utils
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, action == null ? 1F : Math.Max(action.Width + 18, 136)));
             if (!string.IsNullOrEmpty(illustrationName))
             {
-                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 430F));
+                layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, largeIllustration ? 560F : 430F));
             }
 
             Panel textPanel = CreateHeaderTextPanel(title, subtitle);
@@ -420,12 +426,38 @@ namespace XiaoPuZhangGui.Utils
             }
 
             panel.Controls.Add(layout);
+            EventHandler arrangeHeader = delegate
+            {
+                bool narrow = panel.Width > 0 && panel.Width < 1260;
+                panel.Height = string.IsNullOrEmpty(illustrationName)
+                    ? (narrow ? 104 : 112)
+                    : (largeIllustration ? (narrow ? 118 : 156) : (narrow ? 136 : 176));
+
+                panel.Padding = string.IsNullOrEmpty(illustrationName)
+                    ? new Padding(narrow ? 18 : 28, narrow ? 10 : 13, narrow ? 18 : 28, narrow ? 10 : 13)
+                    : new Padding(narrow ? 18 : 28, narrow ? 12 : 18, narrow ? 18 : 28, narrow ? 12 : 18);
+
+                if (!string.IsNullOrEmpty(illustrationName) && layout.ColumnStyles.Count >= 3)
+                {
+                    layout.ColumnStyles[2].Width = largeIllustration
+                        ? (narrow ? 260F : 420F)
+                        : (narrow ? 280F : 430F);
+                }
+            };
+            panel.Resize += arrangeHeader;
+            arrangeHeader(panel, EventArgs.Empty);
             return panel;
         }
 
         public static Panel CreatePageHeader(string title, string subtitle, string illustrationName)
         {
             return CreatePageHeader(title, subtitle, null, illustrationName);
+        }
+
+        private static bool IsLargeHeaderIllustration(string illustrationName)
+        {
+            return !string.IsNullOrWhiteSpace(illustrationName)
+                && illustrationName.Replace('\\', '/').Equals("headers/ai_assistant", StringComparison.OrdinalIgnoreCase);
         }
 
         private static Panel CreateHeaderTextPanel(string title, string subtitle)

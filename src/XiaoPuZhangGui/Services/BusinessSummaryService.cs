@@ -50,6 +50,8 @@ namespace XiaoPuZhangGui.Services
                 IList<ProductSalesRankItem> monthSales = _reportService.GetProductSalesRank(ReportService.GetMonthStart(today), ReportService.GetNextMonthStart(today));
 
                 StringBuilder builder = CreateSummaryHeader("库存补货建议", "截至 " + today.ToString("yyyy-MM-dd"));
+                AppendInventoryCoreData(builder, inventoryItems, lowStockItems, expiringItems);
+                AppendInventoryDetails(builder, "当前全部商品库存明细", inventoryItems, 10000);
                 AppendList(builder, "低库存商品", lowStockItems, 12, delegate(LowStockReportItem item, int index)
                 {
                     return FormatIndex(index) + item.ProductName + "，当前库存 " + FormatNumber(item.CurrentStock) + "，预警线 " + FormatNumber(item.MinStockAlert);
@@ -69,7 +71,8 @@ namespace XiaoPuZhangGui.Services
 
                 builder.AppendLine();
                 builder.AppendLine("【请你完成】");
-                builder.AppendLine("请根据这些库存摘要，给出补货、临期处理和需要关注的商品建议。不要编造数据。");
+                builder.AppendLine("请根据上面的全部商品库存明细、低库存、临期和销售参考，给出补货、临期处理和需要关注的商品建议。不要编造数据。");
+                AppendPlainTextOutputRule(builder);
 
                 return Success("库存补货建议", "截至 " + today.ToString("yyyy-MM-dd"), builder.ToString());
             }
@@ -104,6 +107,7 @@ namespace XiaoPuZhangGui.Services
                 builder.AppendLine();
                 builder.AppendLine("【请你完成】");
                 builder.AppendLine("请温和地分析赊账风险，给出提醒收款、控制新增赊账和维护熟客关系的建议。不要输出吓人的措辞。");
+                AppendPlainTextOutputRule(builder);
 
                 return Success("赊账客户提醒", "截至 " + today.ToString("yyyy-MM-dd"), builder.ToString());
             }
@@ -141,6 +145,7 @@ namespace XiaoPuZhangGui.Services
                 builder.AppendLine();
                 builder.AppendLine("【请你完成】");
                 builder.AppendLine("请分析热销、滞销和进货建议。数据不足时请明确说明，不要编造销量。");
+                AppendPlainTextOutputRule(builder);
 
                 return Success("热销与滞销商品分析", FormatRange(start, end), builder.ToString());
             }
@@ -181,6 +186,7 @@ namespace XiaoPuZhangGui.Services
                 builder.AppendLine("低库存商品数：" + lowStockItems.Count + " 个");
                 builder.AppendLine("临期商品数：" + expiringItems.Count + " 个");
                 builder.AppendLine();
+                AppendInventoryDetails(builder, "当前全部商品库存明细", inventoryItems, 10000);
                 AppendList(builder, "库存为 0 或不足 0 的商品", FilterZeroStock(inventoryItems), 12, delegate(Product item, int index)
                 {
                     return FormatIndex(index) + item.Name + "，当前库存 " + FormatNumber(item.CurrentStock);
@@ -207,6 +213,7 @@ namespace XiaoPuZhangGui.Services
                 });
                 builder.AppendLine("【请你完成】");
                 builder.AppendLine("请根据当前库存总览，判断库存整体是否健康，哪些商品优先补货，哪些商品需要避免继续压货。不要编造数据。");
+                AppendPlainTextOutputRule(builder);
 
                 return Success("当前库存状态总览", "截至 " + today.ToString("yyyy-MM-dd"), builder.ToString());
             }
@@ -276,9 +283,11 @@ namespace XiaoPuZhangGui.Services
                 }
             }
 
+            List<string> dataSourceLabels = new List<string>();
             StringBuilder builder = new StringBuilder();
             builder.AppendLine("以下是小铺掌柜本地数据库实时统计摘要，请只基于这些数据回答，不要编造。");
             builder.AppendLine();
+            bool appendedSummary = false;
             foreach (BusinessSummaryResult summary in summaries)
             {
                 if (summary == null || !summary.Success)
@@ -286,16 +295,18 @@ namespace XiaoPuZhangGui.Services
                     continue;
                 }
 
+                AddSummarySourceLabel(dataSourceLabels, summary.Title);
                 builder.AppendLine(summary.SummaryText);
                 builder.AppendLine();
+                appendedSummary = true;
             }
 
-            if (builder.Length == 0)
+            if (!appendedSummary)
             {
                 return BusinessSummaryResult.Fail("普通对话", "NO_BUSINESS_CONTEXT");
             }
 
-            return Success("实时经营数据上下文", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), builder.ToString());
+            return Success("实时经营数据上下文", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), builder.ToString(), string.Join("、", dataSourceLabels.ToArray()));
         }
 
         private BusinessSummaryResult BuildPeriodSummary(string title, DateTime start, DateTime end, string instruction, bool includeRisk)
@@ -367,6 +378,7 @@ namespace XiaoPuZhangGui.Services
                 builder.AppendLine("【请你完成】");
                 builder.AppendLine(instruction);
                 builder.AppendLine("请用简单、口语化、适合小卖铺老板理解的方式分析，并给出 3 到 5 条建议。不要编造数据。");
+                AppendPlainTextOutputRule(builder);
 
                 return Success(title, FormatRange(start, end), builder.ToString());
             }
@@ -508,7 +520,154 @@ namespace XiaoPuZhangGui.Services
             }
         }
 
+        private static void AppendPlainTextOutputRule(StringBuilder builder)
+        {
+            builder.AppendLine("输出格式要求：只用纯文本回答，不要使用 Markdown 语法，不要使用 #、##、**、```、表格、引用块或代码块。可以使用普通编号 1. 2. 3. 分行说明。");
+        }
+
+        private static void AppendInventoryCoreData(
+            StringBuilder builder,
+            IList<Product> inventoryItems,
+            IList<LowStockReportItem> lowStockItems,
+            IList<ExpiringProductReportItem> expiringItems)
+        {
+            int totalCount = 0;
+            int activeCount = 0;
+            decimal totalStock = 0m;
+            if (inventoryItems != null)
+            {
+                foreach (Product item in inventoryItems)
+                {
+                    totalCount++;
+                    if (IsActiveProduct(item))
+                    {
+                        activeCount++;
+                    }
+
+                    totalStock += item.CurrentStock;
+                }
+            }
+
+            builder.AppendLine("【库存核心数据】");
+            builder.AppendLine("商品总数：" + totalCount + " 个");
+            builder.AppendLine("在售商品数：" + activeCount + " 个");
+            builder.AppendLine("当前总库存数量：" + FormatNumber(totalStock));
+            builder.AppendLine("低库存商品数：" + (lowStockItems == null ? 0 : lowStockItems.Count) + " 个");
+            builder.AppendLine("临期商品数：" + (expiringItems == null ? 0 : expiringItems.Count) + " 个");
+            builder.AppendLine();
+        }
+
+        private static void AppendInventoryDetails(StringBuilder builder, string title, IList<Product> items, int limit)
+        {
+            builder.AppendLine("【" + title + "】");
+            if (items == null || items.Count == 0)
+            {
+                builder.AppendLine("暂无数据。");
+                builder.AppendLine();
+                return;
+            }
+
+            int count = Math.Min(limit, items.Count);
+            for (int index = 0; index < count; index++)
+            {
+                Product item = items[index];
+                builder.AppendLine(FormatIndex(index + 1)
+                    + SafeText(item.Name)
+                    + "，分类 " + SafeText(item.CategoryName)
+                    + "，规格 " + SafeText(item.Specification)
+                    + "，当前库存 " + FormatNumber(item.CurrentStock)
+                    + "，默认售价 " + FormatMoney(item.DefaultPrice)
+                    + "，库存均价 " + FormatMoney(item.AverageCost)
+                    + "，最低库存 " + FormatNumber(item.MinStockAlert)
+                    + "，保质期 " + (item.RequiresExpiry ? "启用" : "未启用")
+                    + "，到期日期 " + (item.ExpiryDate.HasValue ? item.ExpiryDate.Value.ToString("yyyy-MM-dd") : "未填写")
+                    + "，状态 " + SafeText(item.Status)
+                    + "，库存状态 " + BuildInventoryStatus(item));
+            }
+
+            builder.AppendLine();
+        }
+
+        private static string BuildInventoryStatus(Product product)
+        {
+            if (product == null)
+            {
+                return "未知";
+            }
+
+            if (product.CurrentStock <= 0)
+            {
+                return "无库存";
+            }
+
+            if (product.CurrentStock <= product.MinStockAlert)
+            {
+                return "低库存";
+            }
+
+            if (product.RequiresExpiry && product.ExpiryDate.HasValue && product.ExpiryDate.Value.Date <= DateTime.Today.AddDays(15))
+            {
+                return "临期关注";
+            }
+
+            return "正常";
+        }
+
+        private static bool IsActiveProduct(Product product)
+        {
+            return product != null && string.Equals(product.Status, "在售", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void AddSummarySourceLabel(List<string> labels, string title)
+        {
+            if (labels == null || string.IsNullOrWhiteSpace(title))
+            {
+                return;
+            }
+
+            string label = title;
+            if (title.Contains("今日") || title.Contains("收入"))
+            {
+                label = "今日销售摘要";
+            }
+            else if (title.Contains("库存"))
+            {
+                label = "库存摘要";
+            }
+            else if (title.Contains("赊账"))
+            {
+                label = "赊账记录";
+            }
+            else if (title.Contains("热销") || title.Contains("滞销"))
+            {
+                label = "商品销售排行";
+            }
+            else if (title.Contains("本周"))
+            {
+                label = "本周经营摘要";
+            }
+            else if (title.Contains("本月") || title.Contains("月报"))
+            {
+                label = "本月经营摘要";
+            }
+
+            foreach (string existing in labels)
+            {
+                if (string.Equals(existing, label, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+
+            labels.Add(label);
+        }
+
         private static BusinessSummaryResult Success(string title, string period, string summaryText)
+        {
+            return Success(title, period, summaryText, string.Empty);
+        }
+
+        private static BusinessSummaryResult Success(string title, string period, string summaryText, string dataSourceLabel)
         {
             return new BusinessSummaryResult
             {
@@ -516,7 +675,7 @@ namespace XiaoPuZhangGui.Services
                 Title = title,
                 Period = period,
                 SummaryText = summaryText,
-                JsonText = string.Empty,
+                JsonText = dataSourceLabel ?? string.Empty,
                 ErrorMessage = string.Empty
             };
         }

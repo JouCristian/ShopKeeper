@@ -7,7 +7,7 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class InventoryCheckPage : UserControl, IUnsavedChangesAware
+    internal sealed class InventoryCheckPage : UserControl, IUnsavedChangesAware, IResponsivePage
     {
         private readonly InventoryCheckService _inventoryCheckService;
         private readonly ScrapService _scrapService;
@@ -19,6 +19,7 @@ namespace XiaoPuZhangGui.Forms
         private DataGridView _checkGrid;
         private Label _checkEmptyLabel;
         private TextBox _scrapSearchTextBox;
+        private ComboBox _scrapCategoryComboBox;
         private ComboBox _scrapProductComboBox;
         private NumericUpDown _scrapQuantityNumeric;
         private ComboBox _scrapReasonComboBox;
@@ -28,6 +29,10 @@ namespace XiaoPuZhangGui.Forms
         private Label _scrapLossLabel;
         private DataGridView _scrapGrid;
         private Label _scrapEmptyLabel;
+        private Panel _checkContentPanel;
+        private FlowLayoutPanel _checkFiltersPanel;
+        private Panel _scrapContentPanel;
+        private Panel _scrapInputPanel;
 
         public InventoryCheckPage()
         {
@@ -95,6 +100,8 @@ namespace XiaoPuZhangGui.Forms
                 WrapContents = true,
                 BackColor = BackColor
             };
+            _checkContentPanel = content;
+            _checkFiltersPanel = filters;
 
             Button addButton = CreateButton("新建盘点单", UiTheme.SuccessGreen, 120);
             addButton.Click += AddButton_Click;
@@ -136,25 +143,35 @@ namespace XiaoPuZhangGui.Forms
             Panel input = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 142,
+                Height = 154,
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = Color.White,
-                AutoScroll = true,
-                AutoScrollMinSize = new Size(980, 0)
+                AutoScroll = false
             };
+            _scrapContentPanel = content;
+            _scrapInputPanel = input;
 
-            _scrapSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(180, 30), Font = new Font("Microsoft YaHei UI", 11F) };
+            _scrapSearchTextBox = new TextBox { Location = new Point(84, 18), Size = new Size(150, 30), Font = new Font("Microsoft YaHei UI", 11F) };
             UiComponentHelper.CenterTextBoxContent(_scrapSearchTextBox);
             _scrapSearchTextBox.KeyDown += ScrapSearchTextBox_KeyDown;
             Button searchButton = CreateButton("查找", UiTheme.PrimaryBlue, 80);
-            searchButton.Location = new Point(274, 15);
+            searchButton.Location = new Point(244, 15);
             searchButton.Margin = Padding.Empty;
             searchButton.Click += delegate { LoadScrapProducts(); };
 
+            _scrapCategoryComboBox = new ComboBox
+            {
+                Location = new Point(378, 18),
+                Size = new Size(110, 30),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Microsoft YaHei UI", 11F)
+            };
+            _scrapCategoryComboBox.SelectedIndexChanged += delegate { LoadScrapProducts(); };
+
             _scrapProductComboBox = new ComboBox
             {
-                Location = new Point(430, 18),
-                Size = new Size(260, 30),
+                Location = new Point(576, 18),
+                Size = new Size(210, 30),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
@@ -190,14 +207,16 @@ namespace XiaoPuZhangGui.Forms
             saveButton.Margin = Padding.Empty;
             saveButton.Click += SaveScrapButton_Click;
 
-            _scrapStockLabel = CreateInfoLabel(710, 18, 120);
-            _scrapCostLabel = CreateInfoLabel(832, 18, 120);
+            _scrapStockLabel = CreateInfoLabel(800, 18, 118);
+            _scrapCostLabel = CreateInfoLabel(922, 18, 118);
             _scrapLossLabel = CreateInfoLabel(780, 76, 170);
 
             input.Controls.Add(CreateLabel("商品搜索", 14, 18, 70));
             input.Controls.Add(_scrapSearchTextBox);
             input.Controls.Add(searchButton);
-            input.Controls.Add(CreateLabel("选择商品", 360, 18, 70));
+            input.Controls.Add(CreateLabel("分类", 334, 18, 42));
+            input.Controls.Add(_scrapCategoryComboBox);
+            input.Controls.Add(CreateLabel("选择商品", 502, 18, 70));
             input.Controls.Add(_scrapProductComboBox);
             input.Controls.Add(CreateLabel("报废数量", 14, 76, 70));
             input.Controls.Add(_scrapQuantityNumeric);
@@ -222,6 +241,31 @@ namespace XiaoPuZhangGui.Forms
             tab.Controls.Add(content);
         }
 
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            bool veryCompact = ResponsiveLayoutManager.IsVeryCompact(mode);
+            if (_checkContentPanel != null)
+            {
+                _checkContentPanel.Padding = veryCompact ? new Padding(8) : (compact ? new Padding(10) : new Padding(18));
+            }
+
+            if (_checkFiltersPanel != null)
+            {
+                _checkFiltersPanel.Height = veryCompact ? 100 : (compact ? 88 : 108);
+            }
+
+            if (_scrapContentPanel != null)
+            {
+                _scrapContentPanel.Padding = veryCompact ? new Padding(8) : (compact ? new Padding(10) : new Padding(18));
+            }
+
+            if (_scrapInputPanel != null)
+            {
+                _scrapInputPanel.Height = compact ? 140 : 154;
+            }
+        }
+
         private void BuildCheckColumns()
         {
             _checkGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "盘点单号", DataPropertyName = "CheckNo", Width = 170 });
@@ -239,7 +283,7 @@ namespace XiaoPuZhangGui.Forms
         private void BuildScrapColumns()
         {
             _scrapGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "报废单号", DataPropertyName = "ScrapNo", Width = 170 });
-            _scrapGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "报废日期", DataPropertyName = "ScrapDate", Width = 110, DefaultCellStyle = { Format = "yyyy-MM-dd" } });
+            _scrapGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "报废日期", DataPropertyName = "ScrapDate", Width = 160, DefaultCellStyle = { Format = "yyyy-MM-dd HH:mm:ss" } });
             _scrapGrid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "商品名称", DataPropertyName = "ProductNameSnapshot", Width = 150 });
             AddNumberColumn(_scrapGrid, "数量", "Quantity", 90, "N3");
             AddNumberColumn(_scrapGrid, "成本价", "CostPriceSnapshot", 90, "N2");
@@ -361,7 +405,7 @@ namespace XiaoPuZhangGui.Forms
             ProductItem item = _scrapProductComboBox.SelectedItem as ProductItem;
             ScrapRecord record = new ScrapRecord
             {
-                ScrapDate = DateTime.Today,
+                ScrapDate = DateTime.Now,
                 ProductId = item == null ? 0 : item.Product.Id,
                 Quantity = _scrapQuantityNumeric.Value,
                 Reason = _scrapReasonComboBox.Text,
@@ -409,12 +453,20 @@ namespace XiaoPuZhangGui.Forms
         {
             _categoryComboBox.Items.Clear();
             _categoryComboBox.Items.Add(new ComboBoxItem("全部", null));
+            _scrapCategoryComboBox.Items.Clear();
+            _scrapCategoryComboBox.Items.Add(new ComboBoxItem("全部", null));
             foreach (Category category in _categoryService.GetAllCategories())
             {
-                _categoryComboBox.Items.Add(new ComboBoxItem(category.IsActive ? category.Name : category.Name + "（停用）", category.Id));
+                string categoryName = category.IsActive ? category.Name : category.Name + "（停用）";
+                _categoryComboBox.Items.Add(new ComboBoxItem(categoryName, category.Id));
+                if (category.IsActive)
+                {
+                    _scrapCategoryComboBox.Items.Add(new ComboBoxItem(category.Name, category.Id));
+                }
             }
 
             _categoryComboBox.SelectedIndex = 0;
+            _scrapCategoryComboBox.SelectedIndex = 0;
         }
 
         private void LoadChecks()
@@ -434,9 +486,17 @@ namespace XiaoPuZhangGui.Forms
                 selectedId = selected.Product.Id;
             }
 
+            ComboBoxItem categoryItem = _scrapCategoryComboBox == null ? null : _scrapCategoryComboBox.SelectedItem as ComboBoxItem;
+            long? categoryId = categoryItem == null ? null : categoryItem.Id;
+
             _scrapProductComboBox.Items.Clear();
             foreach (Product product in _scrapService.SearchActiveProducts(_scrapSearchTextBox.Text))
             {
+                if (categoryId.HasValue && product.CategoryId != categoryId.Value)
+                {
+                    continue;
+                }
+
                 ProductItem item = new ProductItem(product);
                 _scrapProductComboBox.Items.Add(item);
                 if (product.Id == selectedId)
@@ -468,10 +528,18 @@ namespace XiaoPuZhangGui.Forms
                 _scrapStockLabel.Text = "库存：-";
                 _scrapCostLabel.Text = "成本：-";
                 _scrapLossLabel.Text = "损失：-";
+                _scrapQuantityNumeric.Maximum = 0;
+                _scrapQuantityNumeric.Value = 0;
                 return;
             }
 
             Product product = item.Product;
+            decimal maxQuantity = product.CurrentStock > 0 ? product.CurrentStock : 0;
+            _scrapQuantityNumeric.Maximum = maxQuantity;
+            if (_scrapQuantityNumeric.Value > maxQuantity)
+            {
+                _scrapQuantityNumeric.Value = maxQuantity;
+            }
             _scrapStockLabel.Text = "库存：" + product.CurrentStock.ToString("N3");
             _scrapCostLabel.Text = "成本：" + product.AverageCost.ToString("N2");
             _scrapLossLabel.Text = "损失：" + (_scrapQuantityNumeric.Value * product.AverageCost).ToString("N2");

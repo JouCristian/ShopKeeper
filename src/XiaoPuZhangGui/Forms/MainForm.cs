@@ -35,13 +35,17 @@ namespace XiaoPuZhangGui.Forms
         private readonly Dictionary<string, SidebarNavigationButton> _navigationButtons;
         private NetworkStatusResult _networkStatus;
         private string _currentPageTitle;
+        private UiLayoutMode _layoutMode;
 
         public MainForm()
         {
             Text = "小铺掌柜 AI智能版";
             StartPosition = FormStartPosition.CenterScreen;
-            MinimumSize = new Size(1100, 680);
+            MinimumSize = new Size(1000, 600);
             Size = new Size(1240, 760);
+#if DEBUG
+            KeyPreview = true;
+#endif
             Font = UiTheme.Font(11F);
             BackColor = Color.White;
             ApplyApplicationIcon();
@@ -50,11 +54,12 @@ namespace XiaoPuZhangGui.Forms
             _aiSettingsService = new AiSettingsService();
             _networkStatus = NetworkStatusResult.Unknown();
             _navigationButtons = new Dictionary<string, SidebarNavigationButton>();
+            _layoutMode = ResponsiveLayoutManager.DetectMode(ClientSize);
 
             _navigationPanel = new Panel
             {
                 Dock = DockStyle.Left,
-                Width = 220,
+                Width = ResponsiveLayoutManager.SidebarWidth(_layoutMode),
                 BackColor = UiTheme.SidebarDark,
                 Padding = new Padding(0)
             };
@@ -81,7 +86,7 @@ namespace XiaoPuZhangGui.Forms
             _statusPanel = new Panel
             {
                 Dock = DockStyle.Bottom,
-                Height = 100,
+                Height = ResponsiveLayoutManager.SidebarAiStatusHeight(_layoutMode),
                 BackColor = UiTheme.SidebarDark
             };
             _aiNetworkDot = CreateStatusDot();
@@ -97,7 +102,11 @@ namespace XiaoPuZhangGui.Forms
             _navigationPanel.Controls.Add(_statusPanel);
 
             BuildNavigation();
-            ResizeNavigationButtons();
+            ApplyResponsiveLayout();
+            if (_navigationListPanel != null)
+            {
+                ResizeNavigationButtons();
+            }
             UpdateSidebarStatus();
             ShowPage(HomeDashboardTitle);
         }
@@ -108,6 +117,57 @@ namespace XiaoPuZhangGui.Forms
             await RefreshNetworkStatusAsync();
         }
 
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            ApplyResponsiveLayout();
+        }
+
+#if DEBUG
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            if (e.Control && e.Alt)
+            {
+                if (e.KeyCode == Keys.D1)
+                {
+                    ApplyDebugWindowSize(new Size(1366, 768));
+                    e.Handled = true;
+                    return;
+                }
+
+                if (e.KeyCode == Keys.D2)
+                {
+                    ApplyDebugWindowSize(new Size(1366, 728));
+                    e.Handled = true;
+                    return;
+                }
+
+                if (e.KeyCode == Keys.D3)
+                {
+                    ApplyDebugWindowSize(new Size(1366, 720));
+                    e.Handled = true;
+                    return;
+                }
+
+                if (e.KeyCode == Keys.D4)
+                {
+                    ApplyDebugWindowSize(new Size(1280, 720));
+                    e.Handled = true;
+                    return;
+                }
+            }
+        }
+
+        private void ApplyDebugWindowSize(Size size)
+        {
+            WindowState = FormWindowState.Normal;
+            Size = size;
+            CenterToScreen();
+            ApplyResponsiveLayout();
+        }
+#endif
 
         private void ApplyApplicationIcon()
         {
@@ -187,6 +247,8 @@ namespace XiaoPuZhangGui.Forms
             foreach (SidebarNavigationButton button in _navigationButtons.Values)
             {
                 button.Width = width;
+                button.Height = ResponsiveLayoutManager.SidebarButtonHeight(_layoutMode);
+                button.Font = UiTheme.Font(ResponsiveLayoutManager.IsCompact(_layoutMode) ? 9.8F : 11F, FontStyle.Bold);
             }
 
             _navigationListPanel.HorizontalScroll.Value = 0;
@@ -425,7 +487,68 @@ namespace XiaoPuZhangGui.Forms
         private void ShowContentPage(Control page)
         {
             UiComponentHelper.NormalizeControlMetrics(page);
+            ResponsiveLayoutManager.ApplyToPage(page, _layoutMode);
             _contentPanel.Controls.Add(page);
+        }
+
+        private void ApplyResponsiveLayout()
+        {
+            UiLayoutMode mode = ResponsiveLayoutManager.DetectMode(ClientSize);
+            _layoutMode = mode;
+
+            if (_navigationPanel != null)
+            {
+                _navigationPanel.Width = ResponsiveLayoutManager.SidebarWidth(mode);
+                foreach (Control control in _navigationPanel.Controls)
+                {
+                    Label label = control as Label;
+                    if (label != null && label.Dock == DockStyle.Top)
+                    {
+                        label.Height = ResponsiveLayoutManager.SidebarBrandHeight(mode);
+                        label.Font = UiTheme.Font(ResponsiveLayoutManager.IsCompact(mode) ? 12F : 15F, FontStyle.Bold);
+                    }
+                }
+            }
+
+            if (_statusPanel != null)
+            {
+                _statusPanel.Height = ResponsiveLayoutManager.SidebarAiStatusHeight(mode);
+                LayoutSidebarStatusPanel(mode);
+            }
+
+            if (_navigationListPanel != null)
+            {
+                ResizeNavigationButtons();
+            }
+
+            if (_contentPanel != null && _contentPanel.Controls.Count > 0)
+            {
+                ResponsiveLayoutManager.ApplyToPage(_contentPanel.Controls[0], mode);
+            }
+        }
+
+        private void LayoutSidebarStatusPanel(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            Control title = _statusPanel.Controls.Count > 0 ? _statusPanel.Controls[0] : null;
+            if (title != null)
+            {
+                title.Location = new Point(16, compact ? 4 : 8);
+                title.Size = new Size(_statusPanel.Width - 28, compact ? 18 : 20);
+                title.Font = UiTheme.Font(compact ? 8.5F : 9.5F, FontStyle.Bold);
+            }
+
+            _aiNetworkDot.Location = new Point(18, compact ? 28 : 36);
+            _aiNetworkLabel.Location = new Point(34, compact ? 20 : 29);
+            _aiNetworkLabel.Size = new Size(_statusPanel.Width - 44, compact ? 24 : 26);
+
+            _localSystemDot.Location = new Point(18, compact ? 50 : 62);
+            _localSystemLabel.Location = new Point(34, compact ? 42 : 55);
+            _localSystemLabel.Size = new Size(_statusPanel.Width - 44, compact ? 24 : 26);
+
+            _modeLabel.Visible = !compact;
+            _modeLabel.Location = new Point(18, 78);
+            _modeLabel.Size = new Size(_statusPanel.Width - 36, 20);
         }
 
         private static string ResolveNavigationIconKey(string iconName)

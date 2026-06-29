@@ -11,9 +11,16 @@ namespace XiaoPuZhangGui.Services
 {
     internal sealed class AiConversationService
     {
+        private const int MaxConversationCount = 10;
+
         private string ConversationFilePath
         {
             get { return Path.Combine(AiDataDirectory, "conversations.xml"); }
+        }
+
+        private string CleanupLogPath
+        {
+            get { return Path.Combine(AiDataDirectory, "conversation_cleanup.log"); }
         }
 
         private string AiDataDirectory
@@ -39,6 +46,28 @@ namespace XiaoPuZhangGui.Services
                 .ToList();
         }
 
+        public int CountUserRequests(DateTime startInclusive, DateTime endExclusive)
+        {
+            XDocument document = LoadDocument();
+            int count = 0;
+            foreach (XElement messageElement in document.Descendants("Message"))
+            {
+                string role = ReadValue(messageElement, "Role", string.Empty);
+                if (!string.Equals(role, "user", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                DateTime createdAt = ReadDate(messageElement, "CreatedAt", DateTime.MinValue);
+                if (createdAt >= startInclusive && createdAt < endExclusive)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
         public AiConversation LoadLatestOrCreate(string model)
         {
             IList<AiConversation> conversations = ListConversations();
@@ -61,7 +90,13 @@ namespace XiaoPuZhangGui.Services
             }
 
             AiConversation conversation = ReadConversationHeader(element);
-            foreach (XElement messageElement in element.Element("Messages").Elements("Message"))
+            XElement messagesElement = element.Element("Messages");
+            if (messagesElement == null)
+            {
+                return conversation;
+            }
+
+            foreach (XElement messageElement in messagesElement.Elements("Message"))
             {
                 conversation.Messages.Add(ReadMessage(messageElement));
             }
@@ -81,22 +116,24 @@ namespace XiaoPuZhangGui.Services
                 UpdatedAt = DateTime.Now,
                 Model = string.IsNullOrWhiteSpace(model) ? "deepseek-v4-flash" : model,
                 IsArchived = false,
+                IsPinned = false,
                 Summary = string.Empty
             };
 
             document.Root.Add(CreateConversationElement(conversation));
+            PruneConversationLimit(document, conversation.Id);
             SaveDocument(document);
             return conversation;
         }
 
-        public void AddMessage(long conversationId, string role, string content, string messageType, string dataContextType)
+        public long AddMessage(long conversationId, string role, string content, string messageType, string dataContextType)
         {
             XDocument document = LoadDocument();
             XElement conversationElement = document.Root.Elements("Conversation")
                 .FirstOrDefault(item => ReadLong(item, "Id", 0) == conversationId);
             if (conversationElement == null)
             {
-                return;
+                return 0;
             }
 
             XElement messagesElement = conversationElement.Element("Messages");
@@ -119,6 +156,36 @@ namespace XiaoPuZhangGui.Services
 
             conversationElement.SetElementValue("UpdatedAt", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             AutoTitleConversation(conversationElement, role, content);
+            SaveDocument(document);
+            return nextId;
+        }
+
+        public void UpdateMessage(long conversationId, long messageId, string content, string messageType, string dataContextType)
+        {
+            if (messageId <= 0)
+            {
+                return;
+            }
+
+            XDocument document = LoadDocument();
+            XElement conversationElement = document.Root.Elements("Conversation")
+                .FirstOrDefault(item => ReadLong(item, "Id", 0) == conversationId);
+            if (conversationElement == null)
+            {
+                return;
+            }
+
+            XElement messageElement = conversationElement.Descendants("Message")
+                .FirstOrDefault(item => ReadLong(item, "Id", 0) == messageId);
+            if (messageElement == null)
+            {
+                return;
+            }
+
+            messageElement.SetElementValue("Content", content ?? string.Empty);
+            messageElement.SetElementValue("MessageType", messageType ?? string.Empty);
+            messageElement.SetElementValue("DataContextType", dataContextType ?? string.Empty);
+            conversationElement.SetElementValue("UpdatedAt", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             SaveDocument(document);
         }
 
@@ -203,6 +270,7 @@ namespace XiaoPuZhangGui.Services
                 new XElement("UpdatedAt", conversation.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss")),
                 new XElement("Model", conversation.Model ?? string.Empty),
                 new XElement("IsArchived", conversation.IsArchived),
+                new XElement("IsPinned", conversation.IsPinned),
                 new XElement("Summary", conversation.Summary ?? string.Empty),
                 new XElement("Messages"));
         }
@@ -217,8 +285,49 @@ namespace XiaoPuZhangGui.Services
                 UpdatedAt = ReadDate(element, "UpdatedAt", DateTime.Now),
                 Model = ReadValue(element, "Model", "deepseek-v4-flash"),
                 IsArchived = ReadBool(element, "IsArchived", false),
+                IsPinned = ReadBool(element, "IsPinned", false),
                 Summary = ReadValue(element, "Summary", string.Empty)
             };
+        }
+
+        private void PruneConversationLimit(XDocument document, long currentConversationId)
+        {
+            if (document == null || document.Root == null)
+            {
+                return;
+            }
+
+            while (document.Root.Elements("Conversation")
+                .Where(item => !ReadBool(item, "IsArchived", false))
+                .Count() > MaxConversationCount)
+            {
+                XElement oldest = document.Root.Elements("Conversation")
+                    .Where(item => !ReadBool(item, "IsArchived", false)
+                        && !ReadBool(item, "IsPinned", false)
+                        && ReadLong(item, "Id", 0) != currentConversationId)
+                    .OrderBy(item => ReadDate(item, "UpdatedAt", DateTime.MinValue))
+                    .FirstOrDefault();
+                if (oldest == null)
+                {
+                    return;
+                }
+
+                string title = ReadValue(oldest, "Title", "新对话");
+                oldest.Remove();
+                AppendCleanupLog("已自动清理最早 AI 会话：" + title);
+            }
+        }
+
+        private void AppendCleanupLog(string message)
+        {
+            try
+            {
+                AppPaths.EnsureDirectory(AiDataDirectory);
+                File.AppendAllText(CleanupLogPath, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + message + Environment.NewLine);
+            }
+            catch
+            {
+            }
         }
 
         private static AiStoredMessage ReadMessage(XElement element)

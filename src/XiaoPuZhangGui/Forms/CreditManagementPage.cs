@@ -7,10 +7,12 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class CreditManagementPage : UserControl
+    internal sealed class CreditManagementPage : UserControl, IResponsivePage
     {
         private readonly CreditService _creditService;
         private readonly BindingSource _bindingSource;
+        private readonly Panel _contentPanel;
+        private readonly FlowLayoutPanel _filters;
         private ComboBox _statusComboBox;
         private TextBox _debtorTextBox;
         private DateTimePicker _startDatePicker;
@@ -32,8 +34,8 @@ namespace XiaoPuZhangGui.Forms
                 "跟踪欠款、还款和未结清账款",
                 "headers/credit");
 
-            Panel content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24), BackColor = BackColor };
-            FlowLayoutPanel filters = new FlowLayoutPanel
+            _contentPanel = new Panel { Dock = DockStyle.Fill, Padding = new Padding(24), BackColor = BackColor };
+            _filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 Height = 116,
@@ -60,16 +62,16 @@ namespace XiaoPuZhangGui.Forms
             Button refreshButton = CreateButton("刷新", UiTheme.PrimaryBlue, 90);
             refreshButton.Click += delegate { LoadRecords(); };
 
-            filters.Controls.Add(CreateFilterLabel("状态", 52));
-            filters.Controls.Add(_statusComboBox);
-            filters.Controls.Add(CreateFilterLabel("欠款人", 64));
-            filters.Controls.Add(_debtorTextBox);
-            filters.Controls.Add(CreateFilterLabel("开始日期", 78));
-            filters.Controls.Add(_startDatePicker);
-            filters.Controls.Add(CreateFilterLabel("结束日期", 78));
-            filters.Controls.Add(_endDatePicker);
-            filters.Controls.Add(refreshButton);
-            UiComponentHelper.NormalizeFilterBar(filters);
+            _filters.Controls.Add(CreateFilterLabel("状态", 52));
+            _filters.Controls.Add(_statusComboBox);
+            _filters.Controls.Add(CreateFilterLabel("欠款人", 64));
+            _filters.Controls.Add(_debtorTextBox);
+            _filters.Controls.Add(CreateFilterLabel("开始日期", 78));
+            _filters.Controls.Add(_startDatePicker);
+            _filters.Controls.Add(CreateFilterLabel("结束日期", 78));
+            _filters.Controls.Add(_endDatePicker);
+            _filters.Controls.Add(refreshButton);
+            UiComponentHelper.NormalizeFilterBar(_filters);
 
             _grid = new DataGridView
             {
@@ -90,13 +92,22 @@ namespace XiaoPuZhangGui.Forms
             BuildColumns();
             _emptyLabel = UiComponentHelper.CreateEmptyStateLabel("暂无赊账记录。", "empty/credit");
 
-            content.Controls.Add(_grid);
-            content.Controls.Add(_emptyLabel);
-            content.Controls.Add(filters);
-            Controls.Add(content);
+            _contentPanel.Controls.Add(_grid);
+            _contentPanel.Controls.Add(_emptyLabel);
+            _contentPanel.Controls.Add(_filters);
+            Controls.Add(_contentPanel);
             Controls.Add(headerPanel);
 
             LoadRecords();
+        }
+
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            bool veryCompact = ResponsiveLayoutManager.IsVeryCompact(mode);
+            _contentPanel.Padding = veryCompact ? new Padding(10) : (compact ? new Padding(12) : new Padding(24));
+            _filters.Height = veryCompact ? 106 : (compact ? 92 : 116);
+            _filters.Padding = compact ? new Padding(0, 2, 0, 0) : Padding.Empty;
         }
 
         private void BuildColumns()

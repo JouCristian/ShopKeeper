@@ -19,6 +19,8 @@ namespace XiaoPuZhangGui.Forms
         private ComboBox _categoryComboBox;
         private TextBox _barcodeTextBox;
         private TextBox _specificationTextBox;
+        private Button _unitMenuButton;
+        private ContextMenuStrip _unitMenu;
         private NumericUpDown _defaultPriceNumeric;
         private NumericUpDown _currentStockNumeric;
         private NumericUpDown _averageCostNumeric;
@@ -40,13 +42,16 @@ namespace XiaoPuZhangGui.Forms
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(680, 650);
+            ClientSize = new Size(660, 640);
+            MinimumSize = new Size(676, 679);
             Font = new Font("Microsoft YaHei UI", 11F, FontStyle.Regular);
             BackColor = Color.White;
 
             BuildUi();
             LoadCategories();
             LoadProduct();
+            ClearRequiredNumericTextForNewProduct();
+            Shown += delegate { ClearRequiredNumericTextForNewProduct(); };
         }
 
         private void BuildUi()
@@ -55,36 +60,37 @@ namespace XiaoPuZhangGui.Forms
             {
                 Text = Text,
                 Font = new Font("Microsoft YaHei UI", 20F, FontStyle.Bold),
-                Location = new Point(30, 24),
-                Size = new Size(300, 44)
+                Location = new Point(30, 18),
+                Size = new Size(300, 38)
             };
             Controls.Add(titleLabel);
 
-            _nameTextBox = AddTextBox("商品名称 *", 88, 220);
-            _categoryComboBox = AddComboBox("分类 *", 138, 220);
+            _nameTextBox = AddTextBox("商品名称 *", 72, 220);
+            _categoryComboBox = AddComboBox("分类 *", 118, 220);
             _categoryComboBox.SelectedIndexChanged += CategoryComboBox_SelectedIndexChanged;
-            _barcodeTextBox = AddTextBox("条码", 188, 220);
-            _specificationTextBox = AddTextBox("规格", 238, 220);
-            _defaultPriceNumeric = AddNumeric("默认售价 *", 288, 220, 2);
-            _currentStockNumeric = AddNumeric("当前库存 *", 338, 220, 3);
-            _averageCostNumeric = AddNumeric("库存均价/首次进货价 *", 388, 220, 2);
-            _minStockNumeric = AddNumeric("最低库存提醒 *", 438, 220, 3);
+            _barcodeTextBox = AddTextBox("条码", 164, 220);
+            _specificationTextBox = AddTextBox("规格", 210, 220);
+            AddUnitMenuButton();
+            _defaultPriceNumeric = AddNumeric("默认售价 *", 256, 220, 2);
+            _currentStockNumeric = AddNumeric("当前库存 *", 302, 220, 3);
+            _averageCostNumeric = AddNumeric("库存均价/首次进货价 *", 348, 220, 2);
+            _minStockNumeric = AddNumeric("最低库存提醒 *", 394, 220, 3);
 
-            Label expiryLabel = CreateLabel("是否启用保质期 *", 488);
+            Label expiryLabel = CreateLabel("是否启用保质期 *", 438);
             _requiresExpiryCheckBox = new CheckBox
             {
                 Text = "启用",
-                Location = new Point(220, 491),
+                Location = new Point(220, 441),
                 Size = new Size(90, 28)
             };
             _requiresExpiryCheckBox.CheckedChanged += RequiresExpiryCheckBox_CheckedChanged;
             Controls.Add(expiryLabel);
             Controls.Add(_requiresExpiryCheckBox);
 
-            Label expiryDateLabel = CreateLabel("到期日期", 528);
+            Label expiryDateLabel = CreateLabel("到期日期", 476);
             _expiryDatePicker = new DateTimePicker
             {
-                Location = new Point(220, 528),
+                Location = new Point(220, 476),
                 Size = new Size(160, 30),
                 Format = DateTimePickerFormat.Custom,
                 CustomFormat = "yyyy-MM-dd",
@@ -93,22 +99,22 @@ namespace XiaoPuZhangGui.Forms
             Controls.Add(expiryDateLabel);
             Controls.Add(_expiryDatePicker);
 
-            _remarkTextBox = AddTextBox("备注", 568, 220);
+            _remarkTextBox = AddTextBox("备注", 516, 220);
             _remarkTextBox.Width = 390;
 
             Label noteLabel = new Label
             {
                 Text = "提示：正式使用后，库存变化建议通过入库、销售、盘点模块完成。",
                 ForeColor = UiTheme.TextSecondary,
-                Location = new Point(32, 600),
-                Size = new Size(440, 30)
+                Location = new Point(32, 560),
+                Size = new Size(600, 30)
             };
             Controls.Add(noteLabel);
 
             Button saveButton = new Button
             {
                 Text = "保存",
-                Location = new Point(500, 590),
+                Location = new Point(500, 594),
                 Size = new Size(120, 42),
                 BackColor = UiTheme.PrimaryBlue,
                 ForeColor = Color.White,
@@ -178,6 +184,13 @@ namespace XiaoPuZhangGui.Forms
 
         private void SaveButton_Click(object sender, EventArgs e)
         {
+            string requiredMessage;
+            if (!ValidateRequiredNumericText(out requiredMessage))
+            {
+                MessageBox.Show(requiredMessage, "校验提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             CategoryComboItem categoryItem = _categoryComboBox.SelectedItem as CategoryComboItem;
             Product product = new Product
             {
@@ -212,6 +225,54 @@ namespace XiaoPuZhangGui.Forms
             MessageBox.Show(message, "保存成功", MessageBoxButtons.OK, MessageBoxIcon.Information);
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private void ClearRequiredNumericTextForNewProduct()
+        {
+            if (!_isNew)
+            {
+                return;
+            }
+
+            _defaultPriceNumeric.Text = string.Empty;
+            _currentStockNumeric.Text = string.Empty;
+            _averageCostNumeric.Text = string.Empty;
+            _minStockNumeric.Text = string.Empty;
+        }
+
+        private bool ValidateRequiredNumericText(out string message)
+        {
+            if (IsNumericTextEmpty(_defaultPriceNumeric))
+            {
+                message = "请填写默认售价。";
+                return false;
+            }
+
+            if (IsNumericTextEmpty(_currentStockNumeric))
+            {
+                message = "请填写当前库存。";
+                return false;
+            }
+
+            if (IsNumericTextEmpty(_averageCostNumeric))
+            {
+                message = "请填写库存均价/首次进货价。";
+                return false;
+            }
+
+            if (IsNumericTextEmpty(_minStockNumeric))
+            {
+                message = "请填写最低库存提醒。";
+                return false;
+            }
+
+            message = string.Empty;
+            return true;
+        }
+
+        private static bool IsNumericTextEmpty(NumericUpDown numeric)
+        {
+            return numeric == null || string.IsNullOrWhiteSpace(numeric.Text);
         }
 
         private void CategoryComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -305,6 +366,57 @@ namespace XiaoPuZhangGui.Forms
             };
             Controls.Add(numeric);
             return numeric;
+        }
+
+        private void AddUnitMenuButton()
+        {
+            _unitMenu = new ContextMenuStrip();
+            string[] units = { "个", "支", "瓶", "罐", "盒", "袋", "包", "条", "桶", "杯", "枚", "块" };
+            foreach (string unit in units)
+            {
+                ToolStripMenuItem item = new ToolStripMenuItem(unit);
+                item.Click += delegate { InsertSpecificationUnit(unit); };
+                _unitMenu.Items.Add(item);
+            }
+
+            _unitMenuButton = new Button
+            {
+                Text = "⚙",
+                Location = new Point(_specificationTextBox.Right + 8, _specificationTextBox.Top),
+                Size = new Size(34, 30),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(248, 250, 252),
+                ForeColor = UiTheme.TextSecondary,
+                Font = new Font("Segoe UI Symbol", 10F, FontStyle.Regular),
+                TabStop = false,
+                UseVisualStyleBackColor = false
+            };
+            _unitMenuButton.FlatAppearance.BorderColor = UiTheme.CardBorder;
+            _unitMenuButton.FlatAppearance.BorderSize = 1;
+            _unitMenuButton.Click += delegate
+            {
+                _unitMenu.Show(_unitMenuButton, new Point(0, _unitMenuButton.Height));
+            };
+            Controls.Add(_unitMenuButton);
+        }
+
+        private void InsertSpecificationUnit(string unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit))
+            {
+                return;
+            }
+
+            string text = _specificationTextBox.Text ?? string.Empty;
+            int selectionStart = _specificationTextBox.SelectionStart;
+            int selectionLength = _specificationTextBox.SelectionLength;
+            string prefix = text.Substring(0, selectionStart);
+            string suffix = text.Substring(selectionStart + selectionLength);
+            string spacerBefore = prefix.Length > 0 && !prefix.EndsWith(" ") ? " " : string.Empty;
+            string spacerAfter = suffix.Length > 0 && !suffix.StartsWith(" ") ? " " : string.Empty;
+            _specificationTextBox.Text = prefix + spacerBefore + unit + spacerAfter + suffix;
+            _specificationTextBox.SelectionStart = Math.Min(_specificationTextBox.TextLength, prefix.Length + spacerBefore.Length + unit.Length);
+            _specificationTextBox.Focus();
         }
 
         private static Label CreateLabel(string text, int top)

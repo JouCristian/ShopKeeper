@@ -68,7 +68,7 @@ namespace XiaoPuZhangGui.Services
         {
             if (record.ScrapDate == DateTime.MinValue)
             {
-                record.ScrapDate = DateTime.Today;
+                record.ScrapDate = DateTime.Now;
             }
 
             record.Reason = (record.Reason ?? string.Empty).Trim();
@@ -96,6 +96,20 @@ namespace XiaoPuZhangGui.Services
                 return false;
             }
 
+            if (product.CurrentStock <= 0)
+            {
+                message = "当前库存为 0 或异常，不能继续报废。";
+                return false;
+            }
+
+            if (record.Quantity > product.CurrentStock)
+            {
+                message = "报废数量 " + FormatNumber(record.Quantity)
+                    + " 超过当前库存 " + FormatNumber(product.CurrentStock)
+                    + "，不能执行。";
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(record.Reason))
             {
                 message = "请选择报废原因。";
@@ -104,6 +118,11 @@ namespace XiaoPuZhangGui.Services
 
             message = string.Empty;
             return true;
+        }
+
+        private static string FormatNumber(decimal value)
+        {
+            return value.ToString("0.###");
         }
     }
 }

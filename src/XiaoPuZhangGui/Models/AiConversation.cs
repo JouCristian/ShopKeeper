@@ -22,6 +22,8 @@ namespace XiaoPuZhangGui.Models
 
         public bool IsArchived { get; set; }
 
+        public bool IsPinned { get; set; }
+
         public string Summary { get; set; }
 
         public IList<AiStoredMessage> Messages { get; private set; }

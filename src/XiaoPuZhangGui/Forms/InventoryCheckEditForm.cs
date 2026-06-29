@@ -11,9 +11,11 @@ namespace XiaoPuZhangGui.Forms
     internal sealed class InventoryCheckEditForm : Form
     {
         private readonly InventoryCheckService _inventoryCheckService;
+        private readonly CategoryService _categoryService;
         private readonly BindingList<InventoryLineView> _lines;
         private readonly BindingSource _bindingSource;
         private TextBox _productSearchTextBox;
+        private ComboBox _productCategoryComboBox;
         private ComboBox _productComboBox;
         private NumericUpDown _actualStockNumeric;
         private ComboBox _reasonComboBox;
@@ -29,6 +31,7 @@ namespace XiaoPuZhangGui.Forms
         public InventoryCheckEditForm()
         {
             _inventoryCheckService = new InventoryCheckService();
+            _categoryService = new CategoryService();
             _lines = new BindingList<InventoryLineView>();
             _bindingSource = new BindingSource();
 
@@ -42,6 +45,7 @@ namespace XiaoPuZhangGui.Forms
             BuildUi();
             _bindingSource.DataSource = _lines;
             _lines.ListChanged += delegate { RefreshTotals(); };
+            LoadProductCategories();
             LoadProducts();
             RefreshPreview();
             RefreshTotals();
@@ -124,10 +128,19 @@ namespace XiaoPuZhangGui.Forms
             searchButton.Location = new Point(286, 16);
             searchButton.Click += delegate { LoadProducts(); };
 
+            _productCategoryComboBox = new ComboBox
+            {
+                Location = new Point(424, 18),
+                Size = new Size(120, 30),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Microsoft YaHei UI", 11F)
+            };
+            _productCategoryComboBox.SelectedIndexChanged += delegate { LoadProducts(); };
+
             _productComboBox = new ComboBox
             {
-                Location = new Point(450, 18),
-                Size = new Size(260, 30),
+                Location = new Point(628, 18),
+                Size = new Size(230, 30),
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 Font = new Font("Microsoft YaHei UI", 11F)
             };
@@ -153,15 +166,17 @@ namespace XiaoPuZhangGui.Forms
             addButton.Location = new Point(858, 108);
             addButton.Click += AddButton_Click;
 
-            _systemStockLabel = CreateInfoLabel(728, 16, 120);
-            _costLabel = CreateInfoLabel(850, 16, 120);
-            _differenceLabel = CreateInfoLabel(660, 74, 105);
-            _differenceAmountLabel = CreateInfoLabel(770, 74, 110);
+            _systemStockLabel = CreateInfoLabel(660, 74, 110);
+            _costLabel = CreateInfoLabel(780, 74, 105);
+            _differenceLabel = CreateInfoLabel(660, 110, 105);
+            _differenceAmountLabel = CreateInfoLabel(770, 110, 110);
 
             panel.Controls.Add(CreateLabel("商品搜索", 14, 19, 70));
             panel.Controls.Add(_productSearchTextBox);
             panel.Controls.Add(searchButton);
-            panel.Controls.Add(CreateLabel("选择商品", 380, 19, 70));
+            panel.Controls.Add(CreateLabel("分类", 380, 19, 42));
+            panel.Controls.Add(_productCategoryComboBox);
+            panel.Controls.Add(CreateLabel("选择商品", 554, 19, 70));
             panel.Controls.Add(_productComboBox);
             panel.Controls.Add(CreateLabel("实际库存", 14, 75, 70));
             panel.Controls.Add(_actualStockNumeric);
@@ -361,6 +376,23 @@ namespace XiaoPuZhangGui.Forms
             return false;
         }
 
+        private void LoadProductCategories()
+        {
+            if (_productCategoryComboBox == null)
+            {
+                return;
+            }
+
+            _productCategoryComboBox.Items.Clear();
+            _productCategoryComboBox.Items.Add(new ComboBoxItem("全部", null));
+            foreach (Category category in _categoryService.GetActiveCategories())
+            {
+                _productCategoryComboBox.Items.Add(new ComboBoxItem(category.Name, category.Id));
+            }
+
+            _productCategoryComboBox.SelectedIndex = 0;
+        }
+
         private void LoadProducts()
         {
             long selectedId = 0;
@@ -370,9 +402,17 @@ namespace XiaoPuZhangGui.Forms
                 selectedId = selected.Product.Id;
             }
 
+            ComboBoxItem categoryItem = _productCategoryComboBox == null ? null : _productCategoryComboBox.SelectedItem as ComboBoxItem;
+            long? categoryId = categoryItem == null ? null : categoryItem.Id;
+
             _productComboBox.Items.Clear();
             foreach (Product product in _inventoryCheckService.SearchActiveProducts(_productSearchTextBox.Text))
             {
+                if (categoryId.HasValue && product.CategoryId != categoryId.Value)
+                {
+                    continue;
+                }
+
                 ProductItem item = new ProductItem(product);
                 _productComboBox.Items.Add(item);
                 if (product.Id == selectedId)
@@ -508,6 +548,24 @@ namespace XiaoPuZhangGui.Forms
             }
 
             return value > maximum ? maximum : value;
+        }
+
+        private sealed class ComboBoxItem
+        {
+            public ComboBoxItem(string text, long? id)
+            {
+                Text = text;
+                Id = id;
+            }
+
+            public string Text { get; private set; }
+
+            public long? Id { get; private set; }
+
+            public override string ToString()
+            {
+                return Text;
+            }
         }
 
         private sealed class ProductItem

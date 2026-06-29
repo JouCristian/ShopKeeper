@@ -10,7 +10,7 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class SettingsPage : UserControl
+    internal sealed class SettingsPage : UserControl, IResponsivePage
     {
         private readonly BackupService _backupService;
         private readonly TextBox _storeNameTextBox;
@@ -20,6 +20,13 @@ namespace XiaoPuZhangGui.Forms
         private readonly Label _exportPathLabel;
         private readonly Label _initializedLabel;
         private readonly Label _versionLabel;
+        private readonly Label _titleLabel;
+        private readonly Panel _contentPanel;
+        private readonly TableLayoutPanel _infoTable;
+        private readonly FlowLayoutPanel _actionsPanel;
+        private readonly Panel _recentBackupPanel;
+        private readonly Panel _assetPanel;
+        private readonly Label _noteLabel;
         private ListBox _recentBackupListBox;
 
         public SettingsPage()
@@ -30,7 +37,7 @@ namespace XiaoPuZhangGui.Forms
             BackColor = UiTheme.PageBackground;
             Font = UiTheme.Font(11F);
 
-            Label titleLabel = new Label
+            _titleLabel = new Label
             {
                 AutoSize = false,
                 Dock = DockStyle.Top,
@@ -42,29 +49,35 @@ namespace XiaoPuZhangGui.Forms
                 Padding = new Padding(28, 0, 0, 0)
             };
 
-            Panel contentPanel = new Panel
+            _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(28, 20, 28, 28),
-                AutoScroll = true,
+                Padding = new Padding(18, 12, 18, 12),
+                AutoScroll = false,
                 BackColor = BackColor
             };
 
-            TableLayoutPanel table = new TableLayoutPanel
+            _infoTable = new TableLayoutPanel
             {
                 Dock = DockStyle.Top,
                 ColumnCount = 2,
                 RowCount = 7,
-                Height = 330,
+                Height = 240,
                 BackColor = UiTheme.CardBackground,
-                Padding = new Padding(24),
+                Padding = new Padding(16, 10, 16, 10),
                 CellBorderStyle = TableLayoutPanelCellBorderStyle.None
             };
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _infoTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 136));
+            _infoTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-            _storeNameTextBox = new TextBox { Dock = DockStyle.Fill, Font = UiTheme.Font(12F) };
-            UiComponentHelper.CenterTextBoxContent(_storeNameTextBox);
+            _storeNameTextBox = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                Font = UiTheme.Font(10.5F),
+                AutoSize = false,
+                Multiline = false,
+                Tag = "PlainTextBox"
+            };
             _databasePathLabel = CreateValueLabel();
             _configPathLabel = CreateValueLabel();
             _backupPathLabel = CreateValueLabel();
@@ -72,37 +85,90 @@ namespace XiaoPuZhangGui.Forms
             _initializedLabel = CreateValueLabel();
             _versionLabel = CreateValueLabel();
 
-            AddRow(table, 0, "店铺名称", _storeNameTextBox);
-            AddRow(table, 1, "数据库路径", _databasePathLabel);
-            AddRow(table, 2, "配置文件路径", _configPathLabel);
-            AddRow(table, 3, "备份目录", _backupPathLabel);
-            AddRow(table, 4, "导出目录", _exportPathLabel);
-            AddRow(table, 5, "是否已初始化", _initializedLabel);
-            AddRow(table, 6, "程序版本", _versionLabel);
+            AddRow(_infoTable, 0, "店铺名称", _storeNameTextBox);
+            AddRow(_infoTable, 1, "数据库路径", _databasePathLabel);
+            AddRow(_infoTable, 2, "配置文件路径", _configPathLabel);
+            AddRow(_infoTable, 3, "备份目录", _backupPathLabel);
+            AddRow(_infoTable, 4, "导出目录", _exportPathLabel);
+            AddRow(_infoTable, 5, "是否已初始化", _initializedLabel);
+            AddRow(_infoTable, 6, "程序版本", _versionLabel);
 
-            FlowLayoutPanel actions = BuildActionPanel();
-            Panel recentBackupPanel = BuildRecentBackupPanel();
-            Panel assetPanel = BuildAssetPanel();
+            _actionsPanel = BuildActionPanel();
+            _recentBackupPanel = BuildRecentBackupPanel();
+            _assetPanel = BuildAssetPanel();
 
-            Label noteLabel = new Label
+            _noteLabel = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 54,
+                Height = 30,
                 Text = "PIN 和恢复密钥不会明文显示。备份包包含本机经营数据，请妥善保存。",
                 ForeColor = UiTheme.MutedGray,
                 TextAlign = ContentAlignment.MiddleLeft
             };
 
-            contentPanel.Controls.Add(noteLabel);
-            contentPanel.Controls.Add(assetPanel);
-            contentPanel.Controls.Add(recentBackupPanel);
-            contentPanel.Controls.Add(actions);
-            contentPanel.Controls.Add(table);
+            _contentPanel.Controls.Add(_noteLabel);
+            _contentPanel.Controls.Add(_assetPanel);
+            _contentPanel.Controls.Add(_recentBackupPanel);
+            _contentPanel.Controls.Add(_actionsPanel);
+            _contentPanel.Controls.Add(_infoTable);
 
-            Controls.Add(contentPanel);
-            Controls.Add(titleLabel);
+            Controls.Add(_contentPanel);
+            Controls.Add(_titleLabel);
 
             LoadConfig();
+            ApplyLayout(ResponsiveLayoutManager.DetectMode(Size));
+        }
+
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            if (_titleLabel != null)
+            {
+                _titleLabel.Height = compact ? 52 : 72;
+                _titleLabel.Font = UiTheme.Font(compact ? 18F : 22F, FontStyle.Bold);
+                _titleLabel.Padding = compact ? new Padding(18, 0, 0, 0) : new Padding(28, 0, 0, 0);
+            }
+
+            if (_contentPanel != null)
+            {
+                _contentPanel.Padding = compact ? new Padding(10, 8, 10, 8) : new Padding(18, 12, 18, 12);
+            }
+
+            if (_infoTable != null)
+            {
+                _infoTable.Height = compact ? 220 : 240;
+                _infoTable.Padding = compact ? new Padding(14, 8, 14, 8) : new Padding(16, 10, 16, 10);
+                foreach (RowStyle row in _infoTable.RowStyles)
+                {
+                    row.Height = compact ? 28 : 31;
+                }
+            }
+
+            if (_actionsPanel != null)
+            {
+                _actionsPanel.Height = compact ? 52 : 58;
+                _actionsPanel.Padding = compact ? new Padding(0, 8, 0, 0) : new Padding(0, 10, 0, 0);
+                foreach (Control control in _actionsPanel.Controls)
+                {
+                    control.Size = compact ? new Size(142, 36) : new Size(156, 42);
+                    control.Margin = compact ? new Padding(0, 0, 8, 6) : new Padding(0, 0, 12, 10);
+                }
+            }
+
+            if (_recentBackupPanel != null)
+            {
+                _recentBackupPanel.Height = compact ? 128 : 156;
+            }
+
+            if (_assetPanel != null)
+            {
+                _assetPanel.Height = compact ? 148 : 154;
+            }
+
+            if (_noteLabel != null)
+            {
+                _noteLabel.Height = compact ? 24 : 30;
+            }
         }
 
         private FlowLayoutPanel BuildActionPanel()
@@ -131,8 +197,8 @@ namespace XiaoPuZhangGui.Forms
             FlowLayoutPanel actions = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
-                Height = 132,
-                Padding = new Padding(0, 18, 0, 0),
+                Height = 58,
+                Padding = new Padding(0, 10, 0, 0),
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = true,
                 BackColor = BackColor
@@ -152,7 +218,7 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 190,
+                Height = 156,
                 BackColor = UiTheme.CardBackground,
                 Padding = new Padding(18, 12, 18, 14)
             };
@@ -184,7 +250,7 @@ namespace XiaoPuZhangGui.Forms
             Panel panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 154,
+                Height = 144,
                 BackColor = UiTheme.CardBackground,
                 Padding = new Padding(18, 12, 18, 12)
             };
@@ -202,7 +268,7 @@ namespace XiaoPuZhangGui.Forms
             Label descriptionLabel = new Label
             {
                 Dock = DockStyle.Top,
-                Height = 44,
+                Height = 38,
                 Text = "可将同名 PNG 图片放入自定义资源目录，用于替换首页插图、空状态插图和功能图标。建议小图标 24x24 或 32x32，首页插图 480x200。",
                 Font = UiTheme.Font(10F),
                 ForeColor = UiTheme.TextSecondary,
@@ -241,6 +307,8 @@ namespace XiaoPuZhangGui.Forms
         {
             AppConfig config = AppConfigService.LoadOrCreateDefault();
             _storeNameTextBox.Text = config.StoreName;
+            _storeNameTextBox.SelectionStart = 0;
+            _storeNameTextBox.SelectionLength = 0;
             _databasePathLabel.Text = config.DatabasePath;
             _configPathLabel.Text = AppPaths.ConfigFilePath;
             _backupPathLabel.Text = config.BackupPath;
@@ -473,8 +541,8 @@ namespace XiaoPuZhangGui.Forms
             Button button = new Button
             {
                 Text = text,
-                Size = new Size(156, 42),
-                Margin = new Padding(0, 0, 12, 10),
+                Size = new Size(150, 38),
+                Margin = new Padding(0, 0, 8, 6),
                 BackColor = color,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,

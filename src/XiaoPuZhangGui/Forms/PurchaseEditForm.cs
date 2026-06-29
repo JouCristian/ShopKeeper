@@ -11,11 +11,14 @@ namespace XiaoPuZhangGui.Forms
     internal sealed class PurchaseEditForm : Form
     {
         private readonly ProductService _productService;
+        private readonly CategoryService _categoryService;
         private readonly PurchaseService _purchaseService;
         private readonly BindingList<PurchaseLineView> _lines;
         private readonly BindingSource _bindingSource;
 
         private DateTimePicker _purchaseDatePicker;
+        private TextBox _productSearchTextBox;
+        private ComboBox _productCategoryComboBox;
         private ComboBox _productComboBox;
         private Label _productInfoLabel;
         private NumericUpDown _quantityNumeric;
@@ -31,6 +34,7 @@ namespace XiaoPuZhangGui.Forms
         public PurchaseEditForm()
         {
             _productService = new ProductService();
+            _categoryService = new CategoryService();
             _purchaseService = new PurchaseService();
             _lines = new BindingList<PurchaseLineView>();
             _bindingSource = new BindingSource { DataSource = _lines };
@@ -45,6 +49,7 @@ namespace XiaoPuZhangGui.Forms
             BackColor = Color.White;
 
             BuildUi();
+            LoadProductCategories();
             LoadProducts();
             UpdateLineTotal();
             UpdateTotalAmount();
@@ -89,11 +94,47 @@ namespace XiaoPuZhangGui.Forms
             };
             Controls.Add(addGroup);
 
-            addGroup.Controls.Add(CreateLabel("商品", 32, 18, 60));
+            addGroup.Controls.Add(CreateLabel("商品搜索", 28, 18, 72));
+            _productSearchTextBox = new TextBox
+            {
+                Location = new Point(92, 28),
+                Size = new Size(150, 30),
+                Font = new Font("Microsoft YaHei UI", 11F)
+            };
+            UiComponentHelper.CenterTextBoxContent(_productSearchTextBox);
+            _productSearchTextBox.KeyDown += ProductSearchTextBox_KeyDown;
+            addGroup.Controls.Add(_productSearchTextBox);
+
+            Button searchButton = new Button
+            {
+                Text = "查找",
+                Location = new Point(252, 26),
+                Size = new Size(70, 36),
+                BackColor = UiTheme.PrimaryBlue,
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Microsoft YaHei UI", 10F, FontStyle.Bold)
+            };
+            searchButton.FlatAppearance.BorderSize = 0;
+            searchButton.Click += delegate { LoadProducts(); };
+            addGroup.Controls.Add(searchButton);
+
+            addGroup.Controls.Add(CreateLabel("分类", 28, 336, 42));
+            _productCategoryComboBox = new ComboBox
+            {
+                Location = new Point(376, 28),
+                Size = new Size(120, 30),
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Microsoft YaHei UI", 11F)
+            };
+            _productCategoryComboBox.SelectedIndexChanged += delegate { LoadProducts(); };
+            addGroup.Controls.Add(_productCategoryComboBox);
+
+            addGroup.Controls.Add(CreateLabel("商品", 28, 514, 44));
             _productComboBox = new ComboBox
             {
-                Location = new Point(78, 30),
-                Size = new Size(240, 30),
+                Location = new Point(556, 28),
+                Size = new Size(205, 30),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             _productComboBox.SelectedIndexChanged += ProductComboBox_SelectedIndexChanged;
@@ -101,44 +142,44 @@ namespace XiaoPuZhangGui.Forms
 
             _productInfoLabel = new Label
             {
-                Location = new Point(335, 31),
-                Size = new Size(560, 30),
+                Location = new Point(92, 62),
+                Size = new Size(720, 28),
                 ForeColor = Color.FromArgb(73, 80, 87),
                 TextAlign = ContentAlignment.MiddleLeft
             };
             addGroup.Controls.Add(_productInfoLabel);
 
-            addGroup.Controls.Add(CreateLabel("数量", 76, 18, 60));
-            _quantityNumeric = CreateNumeric(78, 92, 3);
+            addGroup.Controls.Add(CreateLabel("数量", 94, 18, 60));
+            _quantityNumeric = CreateNumeric(96, 92, 3);
             _quantityNumeric.ValueChanged += delegate { UpdateLineTotal(); };
             addGroup.Controls.Add(_quantityNumeric);
 
-            addGroup.Controls.Add(CreateLabel("进货单价", 76, 235, 86));
-            _priceNumeric = CreateNumeric(78, 326, 2);
+            addGroup.Controls.Add(CreateLabel("进货单价", 94, 235, 86));
+            _priceNumeric = CreateNumeric(96, 326, 2);
             _priceNumeric.ValueChanged += delegate { UpdateLineTotal(); };
             addGroup.Controls.Add(_priceNumeric);
 
             _lineTotalLabel = new Label
             {
-                Location = new Point(465, 78),
+                Location = new Point(465, 96),
                 Size = new Size(180, 30),
                 ForeColor = Color.FromArgb(33, 37, 41),
                 TextAlign = ContentAlignment.MiddleLeft
             };
             addGroup.Controls.Add(_lineTotalLabel);
 
-            addGroup.Controls.Add(CreateLabel("生产日期", 120, 18, 80));
-            _productionDatePicker = CreateOptionalDatePicker(102, 118);
+            addGroup.Controls.Add(CreateLabel("生产日期", 132, 18, 80));
+            _productionDatePicker = CreateOptionalDatePicker(102, 130);
             addGroup.Controls.Add(_productionDatePicker);
 
-            addGroup.Controls.Add(CreateLabel("到期日期", 120, 260, 80));
-            _expiryDatePicker = CreateOptionalDatePicker(344, 118);
+            addGroup.Controls.Add(CreateLabel("到期日期", 132, 260, 80));
+            _expiryDatePicker = CreateOptionalDatePicker(344, 130);
             addGroup.Controls.Add(_expiryDatePicker);
 
-            addGroup.Controls.Add(CreateLabel("备注", 120, 500, 60));
+            addGroup.Controls.Add(CreateLabel("备注", 132, 500, 60));
             _lineRemarkTextBox = new TextBox
             {
-                Location = new Point(560, 118),
+                Location = new Point(560, 130),
                 Size = new Size(180, 30)
             };
             UiComponentHelper.CenterTextBoxContent(_lineRemarkTextBox);
@@ -147,7 +188,7 @@ namespace XiaoPuZhangGui.Forms
             Button addLineButton = new Button
             {
                 Text = "加入明细",
-                Location = new Point(770, 112),
+                Location = new Point(770, 124),
                 Size = new Size(120, 40),
                 BackColor = UiTheme.SuccessGreen,
                 ForeColor = Color.White,
@@ -262,17 +303,86 @@ namespace XiaoPuZhangGui.Forms
             column.Width = width;
         }
 
+        private void LoadProductCategories()
+        {
+            if (_productCategoryComboBox == null)
+            {
+                return;
+            }
+
+            _productCategoryComboBox.Items.Clear();
+            _productCategoryComboBox.Items.Add(new ComboBoxItem("全部", null));
+            foreach (Category category in _categoryService.GetActiveCategories())
+            {
+                _productCategoryComboBox.Items.Add(new ComboBoxItem(category.Name, category.Id));
+            }
+
+            _productCategoryComboBox.SelectedIndex = 0;
+        }
+
         private void LoadProducts()
         {
+            long selectedId = 0;
+            ProductComboItem selected = _productComboBox.SelectedItem as ProductComboItem;
+            if (selected != null)
+            {
+                selectedId = selected.Product.Id;
+            }
+
+            ComboBoxItem categoryItem = _productCategoryComboBox == null ? null : _productCategoryComboBox.SelectedItem as ComboBoxItem;
+            long? categoryId = categoryItem == null ? null : categoryItem.Id;
+            string keyword = _productSearchTextBox == null ? string.Empty : _productSearchTextBox.Text.Trim();
+
             _productComboBox.Items.Clear();
             foreach (Product product in _productService.GetActiveProducts())
             {
-                _productComboBox.Items.Add(new ProductComboItem(product));
+                if (!ProductMatchesFilter(product, keyword, categoryId))
+                {
+                    continue;
+                }
+
+                ProductComboItem item = new ProductComboItem(product);
+                _productComboBox.Items.Add(item);
+                if (product.Id == selectedId)
+                {
+                    _productComboBox.SelectedItem = item;
+                }
             }
 
-            if (_productComboBox.Items.Count > 0)
+            if (_productComboBox.SelectedIndex < 0 && _productComboBox.Items.Count > 0)
             {
                 _productComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private static bool ProductMatchesFilter(Product product, string keyword, long? categoryId)
+        {
+            if (categoryId.HasValue && product.CategoryId != categoryId.Value)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return true;
+            }
+
+            return ContainsIgnoreCase(product.Name, keyword)
+                || ContainsIgnoreCase(product.Barcode, keyword)
+                || ContainsIgnoreCase(product.Specification, keyword);
+        }
+
+        private static bool ContainsIgnoreCase(string value, string keyword)
+        {
+            return !string.IsNullOrEmpty(value) && value.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private void ProductSearchTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                LoadProducts();
+                e.Handled = true;
             }
         }
 
@@ -460,6 +570,24 @@ namespace XiaoPuZhangGui.Forms
                 ShowCheckBox = true,
                 Checked = false
             };
+        }
+
+        private sealed class ComboBoxItem
+        {
+            public ComboBoxItem(string text, long? id)
+            {
+                Text = text;
+                Id = id;
+            }
+
+            public string Text { get; private set; }
+
+            public long? Id { get; private set; }
+
+            public override string ToString()
+            {
+                return Text;
+            }
         }
 
         private sealed class ProductComboItem

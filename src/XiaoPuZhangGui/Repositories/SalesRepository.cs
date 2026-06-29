@@ -165,6 +165,7 @@ ORDER BY id ASC;";
                             item.LineCost = item.Quantity * item.CostPriceSnapshot;
                             item.LineProfit = item.LineAmount - item.LineCost;
 
+                            EnsureStockAvailable(product, item);
                             InsertItem(connection, transaction, item);
                             UpdateProductStock(connection, transaction, item.ProductId, product.CurrentStock - item.Quantity);
                             DeductStockBatches(connection, transaction, item.ProductId, item.Quantity);
@@ -172,6 +173,84 @@ ORDER BY id ASC;";
 
                         transaction.Commit();
                         return orderId;
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+        public void Update(SalesOrder order)
+        {
+            using (SQLiteConnection connection = new SQLiteConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (SQLiteTransaction transaction = connection.BeginTransaction())
+                {
+                    try
+                    {
+                        IList<SalesItem> oldItems = GetItems(connection, transaction, order.Id);
+                        if (oldItems.Count == 0 && !Exists(connection, transaction, order.Id))
+                        {
+                            throw new InvalidOperationException("销售单不存在或已被删除。");
+                        }
+
+                        foreach (SalesItem oldItem in oldItems)
+                        {
+                            if (oldItem.ProductId <= 0)
+                            {
+                                continue;
+                            }
+
+                            IncreaseProductStock(connection, transaction, oldItem.ProductId, oldItem.Quantity);
+                            InsertReversalBatch(connection, transaction, oldItem);
+                        }
+
+                        foreach (SalesItem item in order.Items)
+                        {
+                            ProductSnapshot product = GetProductSnapshot(connection, transaction, item.ProductId);
+                            item.SalesOrderId = order.Id;
+                            item.ProductNameSnapshot = product.Name;
+                            item.CostPriceSnapshot = product.AverageCost;
+                        }
+
+                        CalculateTotals(order);
+                        UpdateOrder(connection, transaction, order);
+                        DeleteCreditBySalesOrder(connection, transaction, order.Id);
+                        DeleteItems(connection, transaction, order.Id);
+
+                        if (order.CreditAmount > 0)
+                        {
+                            CreditRepository.InsertInitialCredit(
+                                connection,
+                                transaction,
+                                order.Id,
+                                order.DebtorName,
+                                order.CreditAmount,
+                                order.Remark);
+                        }
+
+                        foreach (SalesItem item in order.Items)
+                        {
+                            ProductSnapshot product = GetProductSnapshot(connection, transaction, item.ProductId);
+                            item.SalesOrderId = order.Id;
+                            item.ProductNameSnapshot = product.Name;
+                            item.CostPriceSnapshot = product.AverageCost;
+                            item.LineAmount = item.Quantity * item.SalePriceSnapshot;
+                            item.LineCost = item.Quantity * item.CostPriceSnapshot;
+                            item.LineProfit = item.LineAmount - item.LineCost;
+
+                            EnsureStockAvailable(product, item);
+                            InsertItem(connection, transaction, item);
+                            UpdateProductStock(connection, transaction, item.ProductId, product.CurrentStock - item.Quantity);
+                            DeductStockBatches(connection, transaction, item.ProductId, item.Quantity);
+                        }
+
+                        transaction.Commit();
                     }
                     catch
                     {
@@ -251,6 +330,35 @@ SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@remark", EmptyToDbNull(order.Remark));
                 command.Parameters.AddWithValue("@created_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
                 return (long)command.ExecuteScalar();
+            }
+        }
+
+        private static void UpdateOrder(SQLiteConnection connection, SQLiteTransaction transaction, SalesOrder order)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = @"
+UPDATE sales_orders
+SET total_amount = @total_amount,
+    total_cost = @total_cost,
+    receivable_amount = @total_amount,
+    cost_amount = @total_cost,
+    gross_profit = @gross_profit,
+    paid_amount = @paid_amount,
+    credit_amount = @credit_amount,
+    remark = @remark,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", order.Id);
+                command.Parameters.AddWithValue("@total_amount", order.TotalAmount);
+                command.Parameters.AddWithValue("@total_cost", order.TotalCost);
+                command.Parameters.AddWithValue("@gross_profit", order.GrossProfit);
+                command.Parameters.AddWithValue("@paid_amount", order.PaidAmount);
+                command.Parameters.AddWithValue("@credit_amount", order.CreditAmount);
+                command.Parameters.AddWithValue("@remark", EmptyToDbNull(order.Remark));
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                command.ExecuteNonQuery();
             }
         }
 
@@ -445,6 +553,17 @@ WHERE id = @id;";
                         AverageCost = Convert.ToDecimal(reader.GetValue(2))
                     };
                 }
+            }
+        }
+
+        private static void EnsureStockAvailable(ProductSnapshot product, SalesItem item)
+        {
+            if (product.CurrentStock < item.Quantity)
+            {
+                throw new InvalidOperationException(
+                    "销售数量不能超过当前库存。商品：" + product.Name
+                    + "，当前库存：" + product.CurrentStock.ToString("N0")
+                    + "，销售数量：" + item.Quantity.ToString("N0"));
             }
         }
 

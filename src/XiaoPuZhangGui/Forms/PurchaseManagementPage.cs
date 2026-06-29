@@ -7,10 +7,12 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class PurchaseManagementPage : UserControl
+    internal sealed class PurchaseManagementPage : UserControl, IResponsivePage
     {
         private readonly PurchaseService _purchaseService;
         private readonly BindingSource _bindingSource;
+        private readonly Panel _contentPanel;
+        private readonly FlowLayoutPanel _filters;
         private readonly DateTimePicker _startDatePicker;
         private readonly DateTimePicker _endDatePicker;
         private readonly TextBox _keywordTextBox;
@@ -31,14 +33,14 @@ namespace XiaoPuZhangGui.Forms
                 "记录入库批次、数量和成本，保持库存准确",
                 "headers/purchase");
 
-            Panel contentPanel = new Panel
+            _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(24),
                 BackColor = BackColor
             };
 
-            FlowLayoutPanel filters = new FlowLayoutPanel
+            _filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 Height = 116,
@@ -63,15 +65,15 @@ namespace XiaoPuZhangGui.Forms
             Button refreshButton = CreateButton("刷新", UiTheme.PrimaryBlue, 90);
             refreshButton.Click += delegate { LoadRecords(); };
 
-            filters.Controls.Add(addButton);
-            filters.Controls.Add(CreateFilterLabel("开始日期", 72));
-            filters.Controls.Add(_startDatePicker);
-            filters.Controls.Add(CreateFilterLabel("结束日期", 72));
-            filters.Controls.Add(_endDatePicker);
-            filters.Controls.Add(CreateFilterLabel("商品名称", 80));
-            filters.Controls.Add(_keywordTextBox);
-            filters.Controls.Add(refreshButton);
-            UiComponentHelper.NormalizeFilterBar(filters);
+            _filters.Controls.Add(addButton);
+            _filters.Controls.Add(CreateFilterLabel("开始日期", 72));
+            _filters.Controls.Add(_startDatePicker);
+            _filters.Controls.Add(CreateFilterLabel("结束日期", 72));
+            _filters.Controls.Add(_endDatePicker);
+            _filters.Controls.Add(CreateFilterLabel("商品名称", 80));
+            _filters.Controls.Add(_keywordTextBox);
+            _filters.Controls.Add(refreshButton);
+            UiComponentHelper.NormalizeFilterBar(_filters);
 
             _grid = new DataGridView
             {
@@ -115,13 +117,22 @@ namespace XiaoPuZhangGui.Forms
                 UseColumnTextForButtonValue = true
             });
 
-            contentPanel.Controls.Add(_grid);
-            contentPanel.Controls.Add(_emptyLabel);
-            contentPanel.Controls.Add(filters);
-            Controls.Add(contentPanel);
+            _contentPanel.Controls.Add(_grid);
+            _contentPanel.Controls.Add(_emptyLabel);
+            _contentPanel.Controls.Add(_filters);
+            Controls.Add(_contentPanel);
             Controls.Add(headerPanel);
 
             LoadRecords();
+        }
+
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            bool veryCompact = ResponsiveLayoutManager.IsVeryCompact(mode);
+            _contentPanel.Padding = veryCompact ? new Padding(10) : (compact ? new Padding(12) : new Padding(24));
+            _filters.Height = veryCompact ? 106 : (compact ? 92 : 116);
+            _filters.Padding = compact ? new Padding(0, 2, 0, 0) : Padding.Empty;
         }
 
         private void AddButton_Click(object sender, EventArgs e)

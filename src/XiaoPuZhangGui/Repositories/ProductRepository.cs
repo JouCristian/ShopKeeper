@@ -30,7 +30,7 @@ FROM products p
 LEFT JOIN categories c ON c.id = p.category_id
 WHERE (@keyword = '' OR p.name LIKE @keyword_like OR IFNULL(p.barcode, '') LIKE @keyword_like)
   AND (@category_id IS NULL OR p.category_id = @category_id)
-  AND (@status = '全部' OR p.status = @status)
+  AND ((@status = '全部' AND IFNULL(p.status, '在售') <> '已删除') OR p.status = @status)
 ORDER BY p.status ASC, p.id DESC;";
                 command.Parameters.AddWithValue("@keyword", keyword ?? string.Empty);
                 command.Parameters.AddWithValue("@keyword_like", "%" + (keyword ?? string.Empty) + "%");
@@ -146,7 +146,8 @@ WHERE id = @id;";
 
                 if (HasBusinessRecords(connection, id))
                 {
-                    throw new InvalidOperationException("该商品已有业务记录，不能物理删除。请使用停用保留历史数据。");
+                    SetStatus(connection, id, "已删除");
+                    return;
                 }
 
                 using (SQLiteCommand command = connection.CreateCommand())
@@ -157,6 +158,25 @@ WHERE id = @id;";
                     {
                         throw new InvalidOperationException("商品不存在或已被删除。");
                     }
+                }
+            }
+        }
+
+        private static void SetStatus(SQLiteConnection connection, long id, string status)
+        {
+            using (SQLiteCommand command = connection.CreateCommand())
+            {
+                command.CommandText = @"
+UPDATE products
+SET status = @status,
+    updated_at = @updated_at
+WHERE id = @id;";
+                command.Parameters.AddWithValue("@id", id);
+                command.Parameters.AddWithValue("@status", status);
+                command.Parameters.AddWithValue("@updated_at", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                if (command.ExecuteNonQuery() == 0)
+                {
+                    throw new InvalidOperationException("商品不存在或已被删除。");
                 }
             }
         }

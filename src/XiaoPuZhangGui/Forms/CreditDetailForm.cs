@@ -82,9 +82,14 @@ namespace XiaoPuZhangGui.Forms
                 DataSource = record.Payments
             };
             GridStyleHelper.ApplyStandardStyle(grid);
-            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "还款日期", DataPropertyName = "PaymentDate", Width = 130, DefaultCellStyle = { Format = "yyyy-MM-dd" } });
-            AddMoneyColumn(grid, "还款金额", "Amount", 110);
-            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "备注", DataPropertyName = "Remark", Width = 500 });
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            grid.ScrollBars = ScrollBars.Vertical;
+            grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "还款日期", DataPropertyName = "PaymentDate", Width = 150, MinimumWidth = 150, DefaultCellStyle = { Format = "yyyy-MM-dd" } });
+            AddMoneyColumn(grid, "还款金额", "Amount", 120);
+            DataGridViewTextBoxColumn remarkColumn = new DataGridViewTextBoxColumn { HeaderText = "备注", DataPropertyName = "Remark", MinimumWidth = 260 };
+            remarkColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            grid.Columns.Add(remarkColumn);
+            ApplyPaymentGridColumns(grid);
             Controls.Add(grid);
 
             Button closeButton = new Button
@@ -109,6 +114,24 @@ namespace XiaoPuZhangGui.Forms
             column.DefaultCellStyle.Format = "N2";
             column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             grid.Columns.Add(column);
+        }
+
+        private static void ApplyPaymentGridColumns(DataGridView grid)
+        {
+            if (grid.Columns.Count < 3)
+            {
+                return;
+            }
+
+            grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            grid.Columns[0].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            grid.Columns[0].Width = 150;
+            grid.Columns[0].MinimumWidth = 140;
+            grid.Columns[1].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            grid.Columns[1].Width = 130;
+            grid.Columns[1].MinimumWidth = 120;
+            grid.Columns[2].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+            grid.Columns[2].MinimumWidth = 280;
         }
     }
 }

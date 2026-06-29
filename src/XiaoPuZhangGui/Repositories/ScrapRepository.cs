@@ -26,7 +26,7 @@ namespace XiaoPuZhangGui.Repositories
 SELECT id, scrap_no, scrap_date, product_id, product_name_snapshot, quantity,
        cost_price_snapshot, loss_amount, reason, remark, created_at, updated_at
 FROM scrap_records
-ORDER BY date(scrap_date) DESC, id DESC
+ORDER BY datetime(scrap_date) DESC, id DESC
 LIMIT 200;";
 
                 using (SQLiteDataReader reader = command.ExecuteReader())
@@ -52,6 +52,25 @@ LIMIT 200;";
                     try
                     {
                         ProductSnapshot product = GetProductSnapshot(connection, transaction, record.ProductId);
+                        if (product.CurrentStock <= 0)
+                        {
+                            throw new InvalidOperationException("当前库存为 0 或异常，不能继续报废。");
+                        }
+
+                        if (record.Quantity <= 0)
+                        {
+                            throw new InvalidOperationException("报废数量必须大于 0。");
+                        }
+
+                        if (record.Quantity > product.CurrentStock)
+                        {
+                            throw new InvalidOperationException("报废数量 "
+                                + record.Quantity.ToString("0.###")
+                                + " 超过当前库存 "
+                                + product.CurrentStock.ToString("0.###")
+                                + "，不能执行。");
+                        }
+
                         record.ScrapNo = GenerateScrapNo();
                         record.ProductNameSnapshot = product.Name;
                         record.CostPriceSnapshot = product.AverageCost;
@@ -118,7 +137,7 @@ VALUES
      @cost_price_snapshot, @loss_amount, @reason, @remark, @created_at);
 SELECT last_insert_rowid();";
                 command.Parameters.AddWithValue("@scrap_no", record.ScrapNo);
-                command.Parameters.AddWithValue("@scrap_date", record.ScrapDate.ToString("yyyy-MM-dd"));
+                command.Parameters.AddWithValue("@scrap_date", record.ScrapDate.ToString("yyyy-MM-dd HH:mm:ss"));
                 command.Parameters.AddWithValue("@product_id", record.ProductId);
                 command.Parameters.AddWithValue("@product_name_snapshot", record.ProductNameSnapshot);
                 command.Parameters.AddWithValue("@quantity", record.Quantity);

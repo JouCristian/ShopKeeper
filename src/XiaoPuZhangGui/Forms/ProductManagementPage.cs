@@ -8,10 +8,12 @@ using XiaoPuZhangGui.Utils;
 
 namespace XiaoPuZhangGui.Forms
 {
-    internal sealed class ProductManagementPage : UserControl
+    internal sealed class ProductManagementPage : UserControl, IResponsivePage
     {
         private readonly ProductService _productService;
         private readonly CategoryService _categoryService;
+        private readonly Panel _contentPanel;
+        private readonly FlowLayoutPanel _filters;
         private readonly TextBox _searchTextBox;
         private readonly ComboBox _categoryComboBox;
         private readonly ComboBox _statusComboBox;
@@ -34,14 +36,14 @@ namespace XiaoPuZhangGui.Forms
                 "维护商品档案、分类、库存预警和保质期信息",
                 "headers/product");
 
-            Panel contentPanel = new Panel
+            _contentPanel = new Panel
             {
                 Dock = DockStyle.Fill,
                 Padding = new Padding(24),
                 BackColor = BackColor
             };
 
-            FlowLayoutPanel filters = new FlowLayoutPanel
+            _filters = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
                 Height = 116,
@@ -87,16 +89,16 @@ namespace XiaoPuZhangGui.Forms
             Button categoryButton = CreateButton("分类管理", UiTheme.MutedGray);
             categoryButton.Click += CategoryButton_Click;
 
-            filters.Controls.Add(CreateFilterLabel("名称/条码"));
-            filters.Controls.Add(_searchTextBox);
-            filters.Controls.Add(CreateFilterLabel("分类"));
-            filters.Controls.Add(_categoryComboBox);
-            filters.Controls.Add(CreateFilterLabel("状态"));
-            filters.Controls.Add(_statusComboBox);
-            filters.Controls.Add(searchButton);
-            filters.Controls.Add(addButton);
-            filters.Controls.Add(categoryButton);
-            UiComponentHelper.NormalizeFilterBar(filters);
+            _filters.Controls.Add(CreateFilterLabel("名称/条码"));
+            _filters.Controls.Add(_searchTextBox);
+            _filters.Controls.Add(CreateFilterLabel("分类"));
+            _filters.Controls.Add(_categoryComboBox);
+            _filters.Controls.Add(CreateFilterLabel("状态"));
+            _filters.Controls.Add(_statusComboBox);
+            _filters.Controls.Add(searchButton);
+            _filters.Controls.Add(addButton);
+            _filters.Controls.Add(categoryButton);
+            UiComponentHelper.NormalizeFilterBar(_filters);
 
             _grid = new DataGridView
             {
@@ -119,14 +121,23 @@ namespace XiaoPuZhangGui.Forms
 
             BuildColumns();
 
-            contentPanel.Controls.Add(_grid);
-            contentPanel.Controls.Add(_emptyLabel);
-            contentPanel.Controls.Add(filters);
-            Controls.Add(contentPanel);
+            _contentPanel.Controls.Add(_grid);
+            _contentPanel.Controls.Add(_emptyLabel);
+            _contentPanel.Controls.Add(_filters);
+            Controls.Add(_contentPanel);
             Controls.Add(headerPanel);
 
             LoadCategories();
             LoadProducts();
+        }
+
+        public void ApplyLayout(UiLayoutMode mode)
+        {
+            bool compact = ResponsiveLayoutManager.IsCompact(mode);
+            bool veryCompact = ResponsiveLayoutManager.IsVeryCompact(mode);
+            _contentPanel.Padding = veryCompact ? new Padding(10) : (compact ? new Padding(12) : new Padding(24));
+            _filters.Height = veryCompact ? 106 : (compact ? 92 : 116);
+            _filters.Padding = compact ? new Padding(0, 2, 0, 0) : Padding.Empty;
         }
 
         private void BuildColumns()
@@ -359,7 +370,7 @@ namespace XiaoPuZhangGui.Forms
             }
 
             DialogResult result = MessageBox.Show(
-                "确认删除商品「" + product.Name + "」吗？\r\n\r\n只有没有任何业务记录的商品可以删除；已有销售、进货、盘点、报废或库存批次的商品请使用停用。",
+                "删除后该商品不会再出现在商品列表和选择下拉框中，历史记录仍会保留。\r\n\r\n是否继续删除「" + product.Name + "」？",
                 "删除商品",
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning,
